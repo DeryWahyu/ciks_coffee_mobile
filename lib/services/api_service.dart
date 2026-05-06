@@ -12,12 +12,38 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://10.0.2.2:8000/api';
+        return 'http://192.168.18.189:8000/api';
       }
     } catch (_) {
       // Ignore platform access error if not web and not recognized
     }
     return 'http://127.0.0.1:8000/api';
+  }
+
+  String get hostUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000';
+    }
+    try {
+      if (Platform.isAndroid) {
+        return 'http://192.168.18.189:8000';
+      }
+    } catch (_) {
+      // Ignore platform access error if not web and not recognized
+    }
+    return 'http://127.0.0.1:8000';
+  }
+
+  String getImageUrl(String path) {
+    if (path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    
+    // Replace 'storage/' prefix if present, as our API route takes the raw path
+    if (path.startsWith('storage/')) {
+      path = path.replaceFirst('storage/', '');
+    }
+    
+    return '$baseUrl/image/$path';
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -98,5 +124,59 @@ class ApiService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+  }
+
+  Future<Map<String, dynamic>> getCategories() async {
+    try {
+      final token = await getToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/categories'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': 'Gagal mengambil kategori'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getProducts({int? categoryId, String? search}) async {
+    try {
+      final token = await getToken();
+      String url = '$baseUrl/products?';
+      if (categoryId != null && categoryId != 0) {
+        url += 'category_id=$categoryId&';
+      }
+      if (search != null && search.isNotEmpty) {
+        url += 'search=$search';
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': 'Gagal mengambil produk'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
   }
 }
