@@ -4,6 +4,8 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/api_service.dart';
 
+import 'screens/splash_screen.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -42,34 +44,33 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final ApiService _apiService = ApiService();
-  bool _isLoading = true;
+  bool _showSplash = true;
   bool _isAuthenticated = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _initializeApp();
   }
 
-  Future<void> _checkAuth() async {
+  Future<void> _initializeApp() async {
+    // Check auth status
     final token = await _apiService.getToken();
+    
+    // We don't change state here yet, we wait for SplashScreen to tell us it's done
+    _isAuthenticated = token != null;
+  }
+
+  void _onSplashComplete() {
     setState(() {
-      _isAuthenticated = token != null;
-      _isLoading = false;
+      _showSplash = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF5E6D3),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF4A3022),
-          ),
-        ),
-      );
+    if (_showSplash) {
+      return SplashScreen(onInitializationComplete: _onSplashComplete);
     }
 
     return _isAuthenticated ? const HomeScreen() : const LoginScreen();
