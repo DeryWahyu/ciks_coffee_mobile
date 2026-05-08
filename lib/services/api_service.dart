@@ -179,4 +179,162 @@ class ApiService {
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
+
+  // ─── Helper: Build auth headers ───
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // ─── Checkout: Create a new order ───
+  Future<Map<String, dynamic>> checkout({
+    required String paymentMethod,
+    required List<Map<String, dynamic>> items,
+    double? cashReceived,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+      final body = {
+        'payment_method': paymentMethod,
+        'items': items,
+      };
+      if (paymentMethod == 'cash' && cashReceived != null) {
+        body['cash_received'] = cashReceived;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders'),
+        headers: headers,
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          return {'success': false, 'message': data['message'] ?? 'Checkout gagal'};
+        } catch (_) {
+          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi ke server gagal. ($e)'};
+    }
+  }
+
+  // ─── Fetch active orders (antrian_baru / sedang_dibuat) ───
+  Future<Map<String, dynamic>> getActiveOrders() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/orders/active'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': 'Gagal mengambil pesanan aktif'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
+
+  // ─── Fetch order history (selesai) ───
+  Future<Map<String, dynamic>> getOrderHistory() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/orders/history'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data['data']};
+      } else {
+        return {'success': false, 'message': 'Gagal mengambil riwayat'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
+
+  // ─── Fetch authenticated user profile ───
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/user'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Gagal mengambil profil'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
+
+  // ─── Confirm order pickup (customer marks order as picked up) ───
+  Future<Map<String, dynamic>> confirmPickup(int orderId) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/pickup'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'message': data['message'] ?? 'Berhasil'};
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          return {'success': false, 'message': data['message'] ?? 'Gagal konfirmasi'};
+        } catch (_) {
+          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+        }
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
+
+  // ─── Fetch QRIS image URL ───
+  Future<Map<String, dynamic>> getQrisImage() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/shop/qris'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final imagePath = data['data']['image_url'] ?? '';
+          return {'success': true, 'image_url': getImageUrl(imagePath)};
+        }
+        return {'success': false, 'message': data['message'] ?? 'QRIS tidak tersedia'};
+      } else {
+        return {'success': false, 'message': 'QRIS tidak tersedia'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi error: $e'};
+    }
+  }
 }
+

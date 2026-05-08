@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../models/product_model.dart';
+import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
-import 'login_screen.dart';
+import 'cart_screen.dart';
+import 'order_status_screen.dart';
+import 'history_screen.dart';
+import 'profile_screen.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -82,15 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchProducts();
   }
 
-  void _logout() async {
-    await _apiService.logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
-    );
-  }
-
   String _formatPrice(dynamic price) {
     if (price == null) return 'Rp 0';
     final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
@@ -101,10 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentIndex = index;
     });
-    if (index == 4) {
-      // If Profile is clicked, for now just logout
-      _logout();
-    }
   }
 
   String _getGreeting() {
@@ -131,6 +124,143 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$dayName, ${now.day} $monthName ${now.year}';
   }
 
+  /// Show variant picker for coffee products, or add directly
+  void _handleAddToCart(Map<String, dynamic> productJson) {
+    final product = ProductModel.fromJson(productJson);
+    final cart = Provider.of<CartProvider>(context, listen: false);
+
+    if (product.hasLitePrice) {
+      // Coffee product: show variant picker
+      _showVariantPicker(product, cart);
+    } else {
+      // Non-coffee: add directly
+      cart.addItem(product);
+      _showAddedSnackbar(product.name);
+    }
+  }
+
+  void _showVariantPicker(ProductModel product, CartProvider cart) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pilih Varian',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF4A3022),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                product.name,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Base variant
+              _buildVariantOption(
+                label: 'Base',
+                price: _formatPrice(product.price),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  cart.addItem(product, variant: 'base');
+                  _showAddedSnackbar('${product.name} (Base)');
+                },
+              ),
+              const SizedBox(height: 10),
+              // Lite variant
+              _buildVariantOption(
+                label: 'Lite',
+                price: _formatPrice(product.priceLite),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  cart.addItem(product, variant: 'lite');
+                  _showAddedSnackbar('${product.name} (Lite)');
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVariantOption({
+    required String label,
+    required String price,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD2B48C)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF4A3022),
+              ),
+            ),
+            Text(
+              price,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF4A3022),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddedSnackbar(String productName) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$productName ditambahkan ke keranjang',
+                style: GoogleFonts.inter(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF4A3022),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,10 +269,10 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildHomeContent(),
-          _buildPlaceholderPage('Keranjang Belanja', Icons.shopping_cart),
-          _buildPlaceholderPage('Status Pesanan', Icons.local_shipping),
-          _buildPlaceholderPage('Riwayat', Icons.history),
-          _buildPlaceholderPage('Profil', Icons.person),
+          const CartScreen(),
+          const OrderStatusScreen(),
+          const HistoryScreen(),
+          const ProfileScreen(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -155,41 +285,61 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _onBottomNavTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF4A3022), // Espresso
-          unselectedItemColor: Colors.grey.shade400,
-          selectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold),
-          unselectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.normal),
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home_filled),
-              label: 'Beranda',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_outlined),
-              activeIcon: Icon(Icons.shopping_cart),
-              label: 'Keranjang',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.local_shipping_outlined),
-              activeIcon: Icon(Icons.local_shipping),
-              label: 'Status',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
-              label: 'Riwayat',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profil',
-            ),
-          ],
+        child: Consumer<CartProvider>(
+          builder: (context, cart, child) {
+            return BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: _onBottomNavTapped,
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.white,
+              selectedItemColor: const Color(0xFF4A3022), // Espresso
+              unselectedItemColor: Colors.grey.shade400,
+              selectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold),
+              unselectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.normal),
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_filled),
+                  label: 'Beranda',
+                ),
+                BottomNavigationBarItem(
+                  icon: Badge(
+                    isLabelVisible: cart.totalItemCount > 0,
+                    label: Text(
+                      '${cart.totalItemCount}',
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red.shade600,
+                    child: const Icon(Icons.shopping_cart_outlined),
+                  ),
+                  activeIcon: Badge(
+                    isLabelVisible: cart.totalItemCount > 0,
+                    label: Text(
+                      '${cart.totalItemCount}',
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red.shade600,
+                    child: const Icon(Icons.shopping_cart),
+                  ),
+                  label: 'Keranjang',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.local_shipping_outlined),
+                  activeIcon: Icon(Icons.local_shipping),
+                  label: 'Status',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  activeIcon: Icon(Icons.receipt_long),
+                  label: 'Riwayat',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profil',
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -444,16 +594,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF4A3022),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.add,
-                                                  color: Colors.white,
-                                                  size: 16,
+                                              GestureDetector(
+                                                onTap: () => _handleAddToCart(product),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF4A3022),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.add,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  ),
                                                 ),
                                               )
                                             ],
@@ -485,41 +638,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.coffee,
           size: 40,
           color: Color(0xFFD2B48C),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderPage(String title, IconData icon) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5E6D3),
-      appBar: AppBar(
-        title: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF4A3022),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 80, color: const Color(0xFFD2B48C)),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: GoogleFonts.inter(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF4A3022),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Fitur ini sedang dalam pengembangan.',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF4A3022).withValues(alpha: 0.7),
-              ),
-            ),
-          ],
         ),
       ),
     );

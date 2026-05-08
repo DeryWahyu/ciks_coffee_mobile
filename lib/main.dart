@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'providers/cart_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/api_service.dart';
@@ -15,22 +17,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Ciks Coffee',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4A3022), // Espresso
-          primary: const Color(0xFF4A3022),
-          secondary: const Color(0xFFD2B48C), // Tan
-          surface: const Color(0xFFF5E6D3), // Latte
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Ciks Coffee',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF4A3022), // Espresso
+            primary: const Color(0xFF4A3022),
+            secondary: const Color(0xFFD2B48C), // Tan
+            surface: const Color(0xFFF5E6D3), // Latte
+          ),
+          textTheme: GoogleFonts.poppinsTextTheme(
+            Theme.of(context).textTheme,
+          ),
+          useMaterial3: true,
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(
-          Theme.of(context).textTheme,
-        ),
-        useMaterial3: true,
+        home: const AuthWrapper(),
       ),
-      home: const AuthWrapper(),
     );
   }
 }
