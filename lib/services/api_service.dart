@@ -12,7 +12,7 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://192.168.18.189:8000/api';
+        return 'http://10.35.39.234:8000/api';
       }
     } catch (_) {
       // Ignore platform access error if not web and not recognized
@@ -26,7 +26,7 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://192.168.18.189:8000';
+        return 'http://10.35.39.234:8000';
       }
     } catch (_) {
       // Ignore platform access error if not web and not recognized
