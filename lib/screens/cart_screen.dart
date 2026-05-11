@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
 
@@ -15,7 +17,7 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final ApiService _apiService = ApiService();
   bool _isCheckingOut = false;
-  String _selectedPayment = 'cash';
+  String _selectedPayment = 'qris';
 
   String _formatPrice(double price) {
     final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
@@ -32,15 +34,16 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    _processCheckout(cart);
+    _processCheckout(cart, null);
   }
 
-  void _processCheckout(CartProvider cart) async {
+  void _processCheckout(CartProvider cart, String? paymentProofPath) async {
     setState(() => _isCheckingOut = true);
 
     final result = await _apiService.checkout(
       paymentMethod: _selectedPayment,
       items: cart.toCheckoutItems(),
+      paymentProofPath: paymentProofPath,
     );
 
     setState(() => _isCheckingOut = false);
@@ -65,133 +68,283 @@ class _CartScreenState extends State<CartScreen> {
 
     if (!mounted) return;
 
+    File? proofFile;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.75,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Scan QRIS untuk Pembayaran',
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF4A3022),
-                  ),
-                ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 4),
-              Text(
-                _formatPrice(cart.totalPrice),
-                style: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // QRIS Image
-              if (qrisResult['success'] == true)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFD2B48C).withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      qrisResult['image_url'],
-                      height: 240,
-                      width: 240,
-                      fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => Container(
-                        height: 200,
-                        color: const Color(0xFFF5E6D3),
-                        child: const Center(
-                          child: Icon(Icons.broken_image, size: 48, color: Color(0xFFD2B48C)),
-                        ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                )
-              else
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5E6D3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.qr_code_2, size: 64, color: Color(0xFFD2B48C)),
-                      const SizedBox(height: 8),
-                      Text(
-                        qrisResult['message'] ?? 'QRIS belum tersedia',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Pembayaran QRIS',
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF4A3022),
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _processCheckout(cart);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A3022),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Text(
-                      'Sudah Bayar, Lanjutkan',
-                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatPrice(cart.totalPrice),
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF4A3022),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    // QRIS Image
+                    if (qrisResult['success'] == true)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFD2B48C).withValues(alpha: 0.5)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network(
+                            qrisResult['image_url'],
+                            height: 200,
+                            width: 200,
+                            fit: BoxFit.contain,
+                            errorBuilder: (c, e, s) => Container(
+                              height: 200,
+                              color: const Color(0xFFF5E6D3),
+                              child: const Center(
+                                child: Icon(Icons.broken_image, size: 48, color: Color(0xFFD2B48C)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5E6D3),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.qr_code_2, size: 64, color: Color(0xFFD2B48C)),
+                            const SizedBox(height: 8),
+                            Text(
+                              qrisResult['message'] ?? 'QRIS belum tersedia',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+
+                    // Upload Proof Section
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: [
+                          // Divider with label
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  'Upload Bukti Transfer',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF4A3022).withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Image Picker Button / Preview
+                          if (proofFile == null)
+                            GestureDetector(
+                              onTap: () async {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  maxWidth: 1200,
+                                  imageQuality: 80,
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    proofFile = File(picked.path);
+                                  });
+                                }
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: const Color(0xFFD2B48C),
+                                    style: BorderStyle.solid,
+                                    width: 1.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: const Color(0xFFF5E6D3).withValues(alpha: 0.5),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.cloud_upload_outlined,
+                                      size: 36,
+                                      color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Ketuk untuk pilih screenshot bukti transfer',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.file(
+                                    proofFile!,
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () => setModalState(() => proofFile = null),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade600,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Bukti terpilih',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Submit Button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: proofFile == null
+                              ? null
+                              : () {
+                                  Navigator.pop(ctx);
+                                  _processCheckout(cart, proofFile?.path);
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A3022),
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(
+                            proofFile == null
+                                ? 'Upload bukti terlebih dahulu'
+                                : 'Kirim Pesanan & Bukti Transfer',
+                            style: GoogleFonts.inter(
+                              color: proofFile == null ? Colors.grey.shade500 : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        'Batal',
+                        style: GoogleFonts.inter(color: Colors.grey.shade500),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  'Batal',
-                  style: GoogleFonts.inter(color: Colors.grey.shade500),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -436,8 +589,6 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          _paymentChip('Cash', 'cash'),
-                          const SizedBox(width: 8),
                           _paymentChip('QRIS', 'qris'),
                         ],
                       ),

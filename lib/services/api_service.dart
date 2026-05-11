@@ -12,7 +12,7 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://10.35.39.234:8000/api';
+        return 'http://192.168.18.189:8000/api';
       }
     } catch (_) {
       // Ignore platform access error if not web and not recognized
@@ -26,7 +26,7 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://10.35.39.234:8000';
+        return 'http://192.168.18.189:8000';
       }
     } catch (_) {
       // Ignore platform access error if not web and not recognized
@@ -190,27 +190,48 @@ class ApiService {
     };
   }
 
-  // ─── Checkout: Create a new order ───
+  // ─── Checkout: Create a new order (supports payment proof upload) ───
   Future<Map<String, dynamic>> checkout({
     required String paymentMethod,
     required List<Map<String, dynamic>> items,
     double? cashReceived,
+    String? paymentProofPath,
   }) async {
     try {
-      final headers = await _authHeaders();
-      final body = {
-        'payment_method': paymentMethod,
-        'items': items,
-      };
+      final token = await getToken();
+      final uri = Uri.parse('$baseUrl/orders');
+
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+
+      request.fields['payment_method'] = paymentMethod;
+
       if (paymentMethod == 'cash' && cashReceived != null) {
-        body['cash_received'] = cashReceived;
+        request.fields['cash_received'] = cashReceived.toString();
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/orders'),
-        headers: headers,
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+      // Add items as indexed fields (Laravel array format)
+      for (int i = 0; i < items.length; i++) {
+        request.fields['items[$i][product_id]'] = items[i]['product_id'].toString();
+        request.fields['items[$i][quantity]'] = items[i]['quantity'].toString();
+        request.fields['items[$i][price]'] = items[i]['price'].toString();
+        if (items[i]['variant'] != null) {
+          request.fields['items[$i][variant]'] = items[i]['variant'].toString();
+        }
+      }
+
+      // Attach payment proof image if provided
+      if (paymentProofPath != null && paymentProofPath.isNotEmpty) {
+        request.files.add(
+          await http.MultipartFile.fromPath('payment_proof', paymentProofPath),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);

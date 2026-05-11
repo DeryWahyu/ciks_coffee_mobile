@@ -103,6 +103,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   // ─── Status Data ───
   static const _stages = [
+    {'status': 'menunggu_verifikasi', 'label': 'Verifikasi', 'icon': Icons.hourglass_top},
     {'status': 'antrian_baru', 'label': 'Antrean Baru', 'icon': Icons.receipt_long},
     {'status': 'sedang_dibuat', 'label': 'Sedang Dibuat', 'icon': Icons.coffee_maker},
     {'status': 'selesai', 'label': 'Siap Diambil', 'icon': Icons.check_circle},
@@ -110,6 +111,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Color _stageColor(String status) {
     switch (status) {
+      case 'menunggu_verifikasi':
+        return const Color(0xFFFF6D00);
       case 'antrian_baru':
         return const Color(0xFFFF9800);
       case 'sedang_dibuat':
@@ -123,12 +126,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   int _stageIndex(String status) {
     switch (status) {
-      case 'antrian_baru':
+      case 'menunggu_verifikasi':
         return 0;
-      case 'sedang_dibuat':
+      case 'antrian_baru':
         return 1;
-      case 'selesai':
+      case 'sedang_dibuat':
         return 2;
+      case 'selesai':
+        return 3;
       default:
         return -1;
     }
