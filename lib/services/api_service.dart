@@ -7,31 +7,14 @@ import '../models/user_model.dart';
 
 class ApiService {
   String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
-    }
-    try {
-      if (Platform.isAndroid) {
-        return 'http://192.168.18.189:8000/api';
-      }
-    } catch (_) {
-      // Ignore platform access error if not web and not recognized
-    }
-    return 'http://127.0.0.1:8000/api';
+    // Gunakan domain jika sudah resolve, atau gunakan IP jika belum
+    return 'https://cikscoffee.my.id/api'; 
+    // return 'http://43.228.213.38/cikscoffee.my.id/api';
   }
 
   String get hostUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
-    }
-    try {
-      if (Platform.isAndroid) {
-        return 'http://192.168.18.189:8000';
-      }
-    } catch (_) {
-      // Ignore platform access error if not web and not recognized
-    }
-    return 'http://127.0.0.1:8000';
+    return 'https://cikscoffee.my.id';
+    // return 'http://43.228.213.38/cikscoffee.my.id';
   }
 
   String getImageUrl(String path) {
