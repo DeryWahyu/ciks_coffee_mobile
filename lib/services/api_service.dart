@@ -8,13 +8,15 @@ import '../models/user_model.dart';
 class ApiService {
   String get baseUrl {
     // Gunakan domain jika sudah resolve, atau gunakan IP jika belum
-    return 'https://cikscoffee.my.id/api'; 
+    // return 'https://cikscoffee.my.id/api'; 
     // return 'http://43.228.213.38/cikscoffee.my.id/api';
+    return 'http://192.168.215.234:8000/api';
   }
 
   String get hostUrl {
-    return 'https://cikscoffee.my.id';
+    // return 'https://cikscoffee.my.id';
     // return 'http://43.228.213.38/cikscoffee.my.id';
+    return 'http://192.168.215.234:8000';
   }
 
   String getImageUrl(String path) {
@@ -89,6 +91,29 @@ class ApiService {
     return prefs.getString('auth_token');
   }
 
+  /// Validate token by calling /api/user endpoint.
+  /// Returns true if token is valid, false otherwise.
+  Future<bool> validateToken() async {
+    try {
+      final token = await getToken();
+      if (token == null) return false;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/user'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('[ApiService] validateToken error: $e');
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     final token = await getToken();
     if (token != null) {
@@ -124,10 +149,13 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data']};
+      } else if (response.statusCode == 401) {
+        return {'success': false, 'message': 'Sesi telah berakhir. Silakan login ulang.'};
       } else {
-        return {'success': false, 'message': 'Gagal mengambil kategori'};
+        return {'success': false, 'message': 'Gagal mengambil kategori (${response.statusCode})'};
       }
     } catch (e) {
+      print('[ApiService] getCategories error: $e');
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
@@ -155,10 +183,13 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data']};
+      } else if (response.statusCode == 401) {
+        return {'success': false, 'message': 'Sesi telah berakhir. Silakan login ulang.'};
       } else {
-        return {'success': false, 'message': 'Gagal mengambil produk'};
+        return {'success': false, 'message': 'Gagal mengambil produk (${response.statusCode})'};
       }
     } catch (e) {
+      print('[ApiService] getProducts error: $e');
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
@@ -222,7 +253,15 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          return {'success': false, 'message': data['message'] ?? 'Checkout gagal'};
+          String errorMessage = data['message'] ?? 'Checkout gagal';
+          if (data['errors'] != null) {
+            // Extract the first validation error
+            final errors = data['errors'] as Map<String, dynamic>;
+            if (errors.isNotEmpty) {
+              errorMessage = errors.values.first[0];
+            }
+          }
+          return {'success': false, 'message': errorMessage};
         } catch (_) {
           return {'success': false, 'message': 'Server error: ${response.statusCode}'};
         }

@@ -61,11 +61,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initializeApp() async {
-    // Check auth status
+    // Check auth status by validating token against server
     final token = await _apiService.getToken();
     
-    // We don't change state here yet, we wait for SplashScreen to tell us it's done
-    _isAuthenticated = token != null;
+    if (token != null) {
+      // Validate token is still valid by calling /api/user
+      final isValid = await _apiService.validateToken();
+      _isAuthenticated = isValid;
+      if (!isValid) {
+        // Token is invalid/expired, clear it
+        await _apiService.logout();
+      }
+    } else {
+      _isAuthenticated = false;
+    }
   }
 
   void _onSplashComplete() {
