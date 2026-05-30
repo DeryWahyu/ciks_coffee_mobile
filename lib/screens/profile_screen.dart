@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
 
@@ -23,6 +24,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _fetchProfile();
+    _loadNotificationPref();
+  }
+
+  Future<void> _loadNotificationPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      });
+    }
+  }
+
+  Future<void> _toggleNotification(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', value);
+    setState(() {
+      _notificationsEnabled = value;
+    });
   }
 
   Future<void> _fetchProfile() async {
@@ -381,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 label: lang.tr('Notifikasi'),
                                 subtitle: _notificationsEnabled ? lang.tr('Aktif') : lang.tr('Nonaktif'),
                                 value: _notificationsEnabled,
-                                onChanged: (v) => setState(() => _notificationsEnabled = v),
+                                onChanged: _toggleNotification,
                               ),
                               _buildMenuItem(
                                 icon: Icons.language,

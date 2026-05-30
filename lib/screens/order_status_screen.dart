@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/order_model.dart';
+import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
 class OrderStatusScreen extends StatefulWidget {
@@ -15,11 +20,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   final ApiService _apiService = ApiService();
   List<OrderModel> _orders = [];
   bool _isLoading = true;
+  
+  Timer? _pollingTimer;
+  final Map<int, String> _previousStatuses = {};
 
   @override
   void initState() {
     super.initState();
     _fetchActiveOrders();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    // Poll every 5 seconds to check for order updates
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _pollActiveOrders();
+    });
   }
 
   Future<void> _fetchActiveOrders() async {
@@ -31,6 +53,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         if (result['success']) {
           final data = result['data'] as List<dynamic>;
           _orders = data.map((o) => OrderModel.fromJson(o)).toList();
+          
+          for (var order in _orders) {
+            _previousStatuses[order.id] = order.status;
+          }
         }
       });
       if (!result['success']) {
@@ -39,6 +65,68 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         );
       }
     }
+  }
+
+  Future<void> _pollActiveOrders() async {
+    final result = await _apiService.getActiveOrders();
+    if (!mounted) return;
+    
+    if (result['success']) {
+      final data = result['data'] as List<dynamic>;
+      final newOrders = data.map((o) => OrderModel.fromJson(o)).toList();
+      
+      bool statusChanged = false;
+      
+      for (var newOrder in newOrders) {
+        final oldStatus = _previousStatuses[newOrder.id];
+        if (oldStatus != null && oldStatus != newOrder.status) {
+          final oldStage = _stageIndex(oldStatus);
+          final newStage = _stageIndex(newOrder.status);
+          
+          // If the order progressed to a further stage, trigger the notification
+          if (newStage > oldStage) {
+            statusChanged = true;
+          }
+        }
+        _previousStatuses[newOrder.id] = newOrder.status;
+      }
+      
+      if (statusChanged) {
+        _playNotificationSound();
+        final lang = Provider.of<LanguageProvider>(context, listen: false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              lang.isEnglish ? 'Your order status has been updated!' : 'Status pesananmu telah diperbarui!', 
+              style: GoogleFonts.inter()
+            ),
+            backgroundColor: const Color(0xFF4A3022),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          )
+        );
+      }
+      
+      setState(() {
+        _orders = newOrders;
+      });
+    }
+  }
+
+  Future<void> _playNotificationSound() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('notifications_enabled') ?? true;
+    
+    if (!isEnabled) return;
+
+    FlutterRingtonePlayer().play(
+      android: AndroidSounds.notification,
+      ios: IosSounds.receivedMessage,
+      looping: false,
+      volume: 1.0,
+      asAlarm: true, // asAlarm ensures it is loud even if media volume is low (but respects silent mode)
+    );
   }
 
   String _formatPrice(double price) {
@@ -55,23 +143,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     }
   }
 
-  Future<void> _confirmPickup(OrderModel order) async {
+  Future<void> _confirmPickup(OrderModel order, LanguageProvider lang) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Konfirmasi Pengambilan',
+          lang.isEnglish ? 'Confirm Pickup' : 'Konfirmasi Pengambilan',
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022)),
         ),
         content: Text(
-          'Apakah pesanan ${order.orderNumber} sudah kamu ambil?',
+          lang.isEnglish ? 'Have you picked up order ${order.orderNumber}?' : 'Apakah pesanan ${order.orderNumber} sudah kamu ambil?',
           style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Belum', style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(lang.isEnglish ? 'Not yet' : 'Belum', style: GoogleFonts.inter(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -79,7 +167,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               backgroundColor: const Color(0xFF4A3022),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text('Sudah Diambil', style: GoogleFonts.inter(color: Colors.white)),
+            child: Text(lang.isEnglish ? 'Picked Up' : 'Sudah Diambil', style: GoogleFonts.inter(color: Colors.white)),
           ),
         ],
       ),
@@ -103,10 +191,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   // ─── Status Data ───
   static const _stages = [
-    {'status': 'menunggu_verifikasi', 'label': 'Verifikasi', 'icon': Icons.hourglass_top},
-    {'status': 'antrian_baru', 'label': 'Antrean Baru', 'icon': Icons.receipt_long},
-    {'status': 'sedang_dibuat', 'label': 'Sedang Dibuat', 'icon': Icons.coffee_maker},
-    {'status': 'selesai', 'label': 'Siap Diambil', 'icon': Icons.check_circle},
+    {'status': 'menunggu_verifikasi', 'label': 'Verifikasi', 'label_en': 'Verification', 'icon': Icons.hourglass_top},
+    {'status': 'antrian_baru', 'label': 'Antrean Baru', 'label_en': 'In Queue', 'icon': Icons.receipt_long},
+    {'status': 'sedang_dibuat', 'label': 'Sedang Dibuat', 'label_en': 'Preparing', 'icon': Icons.coffee_maker},
+    {'status': 'selesai', 'label': 'Siap Diambil', 'label_en': 'Ready to Pickup', 'icon': Icons.check_circle},
   ];
 
   Color _stageColor(String status) {
@@ -141,10 +229,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       appBar: AppBar(
-        title: Text('Status Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text(lang.isEnglish ? 'Order Status' : 'Status Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF4A3022),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -153,20 +243,20 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A3022)))
           : _orders.isEmpty
-              ? _buildEmptyState()
+              ? _buildEmptyState(lang)
               : RefreshIndicator(
                   onRefresh: _fetchActiveOrders,
                   color: const Color(0xFF4A3022),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _orders.length,
-                    itemBuilder: (context, index) => _buildOrderCard(_orders[index]),
+                    itemBuilder: (context, index) => _buildOrderCard(_orders[index], lang),
                   ),
                 ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(LanguageProvider lang) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -181,7 +271,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Tidak Ada Pesanan Aktif',
+            lang.isEnglish ? 'No Active Orders' : 'Tidak Ada Pesanan Aktif',
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -190,7 +280,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Pesananmu akan muncul di sini\nsetelah kamu melakukan pemesanan.',
+            lang.isEnglish ? 'Your orders will appear here\nafter you place an order.' : 'Pesananmu akan muncul di sini\nsetelah kamu melakukan pemesanan.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -214,7 +304,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Widget _buildOrderCard(OrderModel order) {
+  Widget _buildOrderCard(OrderModel order, LanguageProvider lang) {
     final currentStage = _stageIndex(order.status);
     final isReady = order.status == 'selesai';
 
@@ -270,7 +360,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              order.statusLabel,
+                              lang.isEnglish ? _stages[currentStage >= 0 ? currentStage : 0]['label_en'] as String : order.statusLabel,
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -313,7 +403,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   final lineIndex = i ~/ 2;
                   final isActive = currentStage > lineIndex;
                   return Expanded(
-                    child: Container(
+                     child: Container(
                       height: 3,
                       decoration: BoxDecoration(
                         color: isActive
@@ -348,7 +438,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        stage['label'] as String,
+                        lang.isEnglish ? stage['label_en'] as String : stage['label'] as String,
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
@@ -422,10 +512,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _confirmPickup(order),
+                  onPressed: () => _confirmPickup(order, lang),
                   icon: const Icon(Icons.back_hand_outlined, size: 18),
                   label: Text(
-                    'Pesanan Telah Diambil',
+                    lang.isEnglish ? 'Order Picked Up' : 'Pesanan Telah Diambil',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   style: ElevatedButton.styleFrom(

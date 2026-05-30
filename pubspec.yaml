@@ -40,6 +40,7 @@ dependencies:
   intl: ^0.20.2
   provider: ^6.1.2
   image_picker: ^1.1.2
+  flutter_ringtone_player: ^4.0.0+4
 
 dev_dependencies:
   flutter_test:
