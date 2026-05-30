@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/cart_provider.dart';
+import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
 class CartScreen extends StatefulWidget {
@@ -26,18 +27,18 @@ class _CartScreenState extends State<CartScreen> {
 
   void _checkout() async {
     final cart = Provider.of<CartProvider>(context, listen: false);
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     if (cart.isEmpty) return;
 
-    // If QRIS selected, show QRIS image first
     if (_selectedPayment == 'qris') {
-      _showQrisPaymentSheet(cart);
+      _showQrisPaymentSheet(cart, lang);
       return;
     }
 
-    _processCheckout(cart, null);
+    _processCheckout(cart, null, lang);
   }
 
-  void _processCheckout(CartProvider cart, String? paymentProofPath) async {
+  void _processCheckout(CartProvider cart, String? paymentProofPath, LanguageProvider lang) async {
     setState(() => _isCheckingOut = true);
 
     final result = await _apiService.checkout(
@@ -52,7 +53,7 @@ class _CartScreenState extends State<CartScreen> {
 
     if (result['success']) {
       cart.clear();
-      _showSuccessDialog(result['data']);
+      _showSuccessDialog(result['data'], lang);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -63,7 +64,7 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _showQrisPaymentSheet(CartProvider cart) async {
+  void _showQrisPaymentSheet(CartProvider cart, LanguageProvider lang) async {
     final qrisResult = await _apiService.getQrisImage();
 
     if (!mounted) return;
@@ -101,7 +102,7 @@ class _CartScreenState extends State<CartScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
-                        'Pembayaran QRIS',
+                        lang.tr('Pembayaran QRIS'),
                         style: GoogleFonts.inter(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -157,7 +158,7 @@ class _CartScreenState extends State<CartScreen> {
                             const Icon(Icons.qr_code_2, size: 64, color: Color(0xFFD2B48C)),
                             const SizedBox(height: 8),
                             Text(
-                              qrisResult['message'] ?? 'QRIS belum tersedia',
+                              qrisResult['message'] ?? lang.tr('QRIS belum tersedia'),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: const Color(0xFF4A3022).withValues(alpha: 0.6),
@@ -181,7 +182,7 @@ class _CartScreenState extends State<CartScreen> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: Text(
-                                  'Upload Bukti Transfer',
+                                  lang.tr('Upload Bukti Transfer'),
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +232,7 @@ class _CartScreenState extends State<CartScreen> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Ketuk untuk pilih screenshot bukti transfer',
+                                      lang.tr('Ketuk untuk pilih screenshot bukti transfer'),
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         color: const Color(0xFF4A3022).withValues(alpha: 0.6),
@@ -283,7 +284,7 @@ class _CartScreenState extends State<CartScreen> {
                                         const Icon(Icons.check_circle, color: Colors.white, size: 14),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'Bukti terpilih',
+                                          lang.tr('Bukti terpilih'),
                                           style: GoogleFonts.inter(
                                             color: Colors.white,
                                             fontSize: 11,
@@ -311,7 +312,7 @@ class _CartScreenState extends State<CartScreen> {
                               ? null
                               : () {
                                   Navigator.pop(ctx);
-                                  _processCheckout(cart, proofFile?.path);
+                                  _processCheckout(cart, proofFile?.path, lang);
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A3022),
@@ -321,8 +322,8 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           child: Text(
                             proofFile == null
-                                ? 'Upload bukti terlebih dahulu'
-                                : 'Kirim Pesanan & Bukti Transfer',
+                                ? lang.tr('Upload bukti terlebih dahulu')
+                                : lang.tr('Kirim Pesanan & Bukti Transfer'),
                             style: GoogleFonts.inter(
                               color: proofFile == null ? Colors.grey.shade500 : Colors.white,
                               fontWeight: FontWeight.bold,
@@ -335,7 +336,7 @@ class _CartScreenState extends State<CartScreen> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        'Batal',
+                        lang.tr('Batal'),
                         style: GoogleFonts.inter(color: Colors.grey.shade500),
                       ),
                     ),
@@ -350,7 +351,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  void _showSuccessDialog(Map<String, dynamic> data) {
+  void _showSuccessDialog(Map<String, dynamic> data, LanguageProvider lang) {
     final order = data['order'];
     showDialog(
       context: context,
@@ -372,7 +373,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Pesanan Berhasil!',
+                lang.tr('Pesanan Berhasil!'),
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -381,7 +382,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'No. ${order['order_number']}',
+                '${lang.tr('No.')} ${order['order_number']}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: const Color(0xFF4A3022).withValues(alpha: 0.7),
@@ -389,7 +390,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Total: ${order['formatted_total']}',
+                '${lang.tr('Total:')} ${order['formatted_total']}',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -421,10 +422,12 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       appBar: AppBar(
-        title: Text('Keranjang', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text(lang.tr('Keranjang'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF4A3022),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -440,7 +443,7 @@ class _CartScreenState extends State<CartScreen> {
                   Icon(Icons.shopping_cart_outlined, size: 80, color: const Color(0xFFD2B48C).withValues(alpha: 0.6)),
                   const SizedBox(height: 16),
                   Text(
-                    'Keranjang Kosong',
+                    lang.tr('Keranjang Kosong'),
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -449,7 +452,7 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Yuk, pilih menu favoritmu!',
+                    lang.tr('Yuk, pilih menu favoritmu!'),
                     style: GoogleFonts.inter(
                       color: const Color(0xFF4A3022).withValues(alpha: 0.6),
                     ),
@@ -582,7 +585,7 @@ class _CartScreenState extends State<CartScreen> {
                       Row(
                         children: [
                           Text(
-                            'Pembayaran:',
+                            lang.tr('Pembayaran:'),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF4A3022),
@@ -601,7 +604,7 @@ class _CartScreenState extends State<CartScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Total',
+                                lang.tr('Total'),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: const Color(0xFF4A3022).withValues(alpha: 0.6),
@@ -634,7 +637,7 @@ class _CartScreenState extends State<CartScreen> {
                                       const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'Pesan Sekarang',
+                                        lang.tr('Pesan Sekarang'),
                                         style: GoogleFonts.inter(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,

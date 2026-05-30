@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/product_model.dart';
 import '../providers/cart_provider.dart';
+import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import 'cart_screen.dart';
 import 'order_status_screen.dart';
@@ -100,16 +101,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  String _getGreeting() {
+  String _getGreeting(LanguageProvider lang) {
     final hour = DateTime.now().hour;
     if (hour < 11) {
-      return 'Selamat Pagi,';
+      return lang.tr('Selamat Pagi,');
     } else if (hour < 15) {
-      return 'Selamat Siang,';
+      return lang.tr('Selamat Siang,');
     } else if (hour < 18) {
-      return 'Selamat Sore,';
+      return lang.tr('Selamat Sore,');
     } else {
-      return 'Selamat Malam,';
+      return lang.tr('Selamat Malam,');
     }
   }
 
@@ -128,18 +129,19 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleAddToCart(Map<String, dynamic> productJson) {
     final product = ProductModel.fromJson(productJson);
     final cart = Provider.of<CartProvider>(context, listen: false);
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
 
     if (product.hasLitePrice) {
       // Coffee product: show variant picker
-      _showVariantPicker(product, cart);
+      _showVariantPicker(product, cart, lang);
     } else {
       // Non-coffee: add directly
       cart.addItem(product);
-      _showAddedSnackbar(product.name);
+      _showAddedSnackbar(product.name, lang);
     }
   }
 
-  void _showVariantPicker(ProductModel product, CartProvider cart) {
+  void _showVariantPicker(ProductModel product, CartProvider cart, LanguageProvider lang) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -155,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Pilih Varian',
+                lang.tr('Pilih Varian'),
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -178,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   cart.addItem(product, variant: 'base');
-                  _showAddedSnackbar('${product.name} (Base)');
+                  _showAddedSnackbar('${product.name} (Base)', lang);
                 },
               ),
               const SizedBox(height: 10),
@@ -189,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   cart.addItem(product, variant: 'lite');
-                  _showAddedSnackbar('${product.name} (Lite)');
+                  _showAddedSnackbar('${product.name} (Lite)', lang);
                 },
               ),
               const SizedBox(height: 8),
@@ -237,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showAddedSnackbar(String productName) {
+  void _showAddedSnackbar(String productName, LanguageProvider lang) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -247,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '$productName ditambahkan ke keranjang',
+                '$productName ${lang.tr('ditambahkan ke keranjang')}',
                 style: GoogleFonts.inter(fontSize: 13),
               ),
             ),
@@ -263,6 +265,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3), // Latte
       body: IndexedStack(
@@ -297,9 +301,9 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold),
               unselectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.normal),
               items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.home_filled),
-                  label: 'Beranda',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.home_filled),
+                  label: lang.tr('Beranda'),
                 ),
                 BottomNavigationBarItem(
                   icon: Badge(
@@ -320,22 +324,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.red.shade600,
                     child: const Icon(Icons.shopping_cart),
                   ),
-                  label: 'Keranjang',
+                  label: lang.tr('Keranjang'),
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.local_shipping_outlined),
-                  activeIcon: Icon(Icons.local_shipping),
-                  label: 'Status',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  activeIcon: const Icon(Icons.local_shipping),
+                  label: lang.tr('Status'),
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  activeIcon: Icon(Icons.receipt_long),
-                  label: 'Riwayat',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  activeIcon: const Icon(Icons.receipt_long),
+                  label: lang.tr('Riwayat'),
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: 'Profil',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.person_outline),
+                  activeIcon: const Icon(Icons.person),
+                  label: lang.tr('Profil'),
                 ),
               ],
             );
@@ -346,6 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent() {
+    final lang = Provider.of<LanguageProvider>(context);
+    
     return RefreshIndicator(
       onRefresh: () async {
         await _fetchCategories();
@@ -391,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _getGreeting().replaceAll(',', ''), // Remove comma for inline display
+                      _getGreeting(lang).replaceAll(',', ''), // Remove comma for inline display
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -427,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Padding(
               padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 24.0, bottom: 16.0),
               child: Text(
-                'Mau minum & makan apa hari ini?',
+                lang.tr('Mau minum & makan apa hari ini?'),
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -441,11 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverToBoxAdapter(
             child: _isLoadingCategories
                 ? const SizedBox(
-                    height: 50,
+                    height: 38,
                     child: Center(child: CircularProgressIndicator(color: Color(0xFF4A3022))),
                   )
                 : SizedBox(
-                    height: 50,
+                    height: 38,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -454,30 +460,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         final isAll = index == 0;
                         final category = isAll ? null : _categories[index - 1];
                         final id = isAll ? 0 : category['id'];
-                        final name = isAll ? 'Semua' : category['name'];
+                        final name = isAll ? lang.tr('Semua') : category['name'];
                         final isSelected = _selectedCategoryId == id;
 
                         return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: ChoiceChip(
-                            label: Text(
-                              name,
-                              style: GoogleFonts.inter(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: isSelected ? Colors.white : const Color(0xFF4A3022),
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: const Color(0xFF4A3022),
-                            backgroundColor: Colors.white,
-                            side: BorderSide(
-                              color: isSelected ? const Color(0xFF4A3022) : const Color(0xFFD2B48C), // Caramel
-                            ),
-                            onSelected: (selected) {
-                              if (selected) _onCategorySelected(id);
+                          padding: const EdgeInsets.only(right: 10),
+                          child: GestureDetector(
+                            onTap: () {
+                              if (!isSelected) _onCategorySelected(id);
                             },
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF4A3022) : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF4A3022) : const Color(0xFFD2B48C).withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.inter(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13,
+                                    color: isSelected ? Colors.white : const Color(0xFF4A3022),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -497,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? SliverFillRemaining(
                       child: Center(
                         child: Text(
-                          'Tidak ada produk ditemukan.',
+                          lang.tr('Tidak ada produk ditemukan.'),
                           style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
                         ),
                       ),

@@ -10,13 +10,15 @@ class ApiService {
     // Gunakan domain jika sudah resolve, atau gunakan IP jika belum
     // return 'https://cikscoffee.my.id/api'; 
     // return 'http://43.228.213.38/cikscoffee.my.id/api';
-    return 'http://192.168.215.234:8000/api';
+    // return 'http://192.168.215.234:8000/api';
+    return 'http://192.168.18.189:8000/api';
   }
 
   String get hostUrl {
     // return 'https://cikscoffee.my.id';
     // return 'http://43.228.213.38/cikscoffee.my.id';
-    return 'http://192.168.215.234:8000';
+    // return 'http://192.168.215.234:8000';
+    return 'http://192.168.18.189:8000';
   }
 
   String getImageUrl(String path) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../providers/language_provider.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -37,22 +39,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _logout() async {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Keluar',
+          lang.tr('Keluar'),
           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022)),
         ),
         content: Text(
-          'Apakah kamu yakin ingin keluar dari akun ini?',
+          lang.tr('Apakah kamu yakin ingin keluar dari akun ini?'),
           style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Batal', style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(lang.tr('Batal'), style: GoogleFonts.inter(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -68,7 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: Colors.red.shade600,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text('Keluar', style: GoogleFonts.inter(color: Colors.white)),
+            child: Text(lang.tr('Keluar'), style: GoogleFonts.inter(color: Colors.white)),
           ),
         ],
       ),
@@ -76,6 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAboutDialog() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -104,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Versi 1.0.0',
+                lang.tr('Versi 1.0.0'),
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -112,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!',
+                lang.tr('Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 13,
@@ -130,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text('Tutup', style: GoogleFonts.inter(color: Colors.white)),
+                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
                 ),
               ),
             ],
@@ -141,6 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showLanguageSheet() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -156,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Bahasa',
+                lang.tr('Bahasa'),
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -164,9 +169,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildLanguageOption('Bahasa Indonesia', '🇮🇩', true),
+              _buildLanguageOption('Bahasa Indonesia', '🇮🇩', false),
               const SizedBox(height: 8),
-              _buildLanguageOption('English', '🇬🇧', false),
+              _buildLanguageOption('English', '🇬🇧', true),
               const SizedBox(height: 8),
             ],
           ),
@@ -175,13 +180,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildLanguageOption(String name, String flag, bool isSelected) {
+  Widget _buildLanguageOption(String name, String flag, bool isEnglishOption) {
+    final lang = Provider.of<LanguageProvider>(context);
+    final isSelected = lang.isEnglish == isEnglishOption;
     return InkWell(
       onTap: () {
         Navigator.pop(context);
+        lang.toggleLanguage(isEnglishOption);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bahasa diubah ke $name'),
+            content: Text(lang.isEnglish ? 'Language changed to $name' : 'Bahasa diubah ke $name'),
             backgroundColor: const Color(0xFF4A3022),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -221,6 +229,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       body: _isLoading
@@ -232,12 +242,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
                       const SizedBox(height: 12),
-                      Text('Gagal memuat profil.', style: GoogleFonts.inter(color: const Color(0xFF4A3022))),
+                      Text(lang.tr('Gagal memuat profil.'), style: GoogleFonts.inter(color: const Color(0xFF4A3022))),
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: _fetchProfile,
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A3022)),
-                        child: Text('Coba Lagi', style: GoogleFonts.inter(color: Colors.white)),
+                        child: Text(lang.tr('Coba Lagi'), style: GoogleFonts.inter(color: Colors.white)),
                       ),
                     ],
                   ),
@@ -329,7 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             // Account Section
                             Text(
-                              'AKUN',
+                              lang.tr('AKUN'),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -341,14 +351,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildMenuCard([
                               _buildMenuItem(
                                 icon: Icons.person_outline,
-                                label: 'Informasi Pribadi',
+                                label: lang.tr('Informasi Pribadi'),
                                 subtitle: _user!.email,
                                 onTap: () => _showInfoSheet(),
                               ),
                               _buildMenuItem(
                                 icon: Icons.phone_outlined,
-                                label: 'Nomor Telepon',
-                                subtitle: _user!.phone ?? 'Belum diatur',
+                                label: lang.tr('Nomor Telepon'),
+                                subtitle: _user!.phone ?? lang.tr('Belum diatur'),
                                 onTap: () => _showInfoSheet(),
                               ),
                             ]),
@@ -356,7 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             // Preferences Section
                             Text(
-                              'PREFERENSI',
+                              lang.tr('PREFERENSI'),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -368,15 +378,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildMenuCard([
                               _buildMenuItemSwitch(
                                 icon: Icons.notifications_outlined,
-                                label: 'Notifikasi',
-                                subtitle: _notificationsEnabled ? 'Aktif' : 'Nonaktif',
+                                label: lang.tr('Notifikasi'),
+                                subtitle: _notificationsEnabled ? lang.tr('Aktif') : lang.tr('Nonaktif'),
                                 value: _notificationsEnabled,
                                 onChanged: (v) => setState(() => _notificationsEnabled = v),
                               ),
                               _buildMenuItem(
                                 icon: Icons.language,
-                                label: 'Bahasa',
-                                subtitle: 'Bahasa Indonesia',
+                                label: lang.tr('Bahasa'),
+                                subtitle: lang.isEnglish ? 'English' : 'Bahasa Indonesia',
                                 onTap: _showLanguageSheet,
                               ),
                             ]),
@@ -384,7 +394,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             // Info Section
                             Text(
-                              'LAINNYA',
+                              lang.tr('LAINNYA'),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -396,17 +406,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildMenuCard([
                               _buildMenuItem(
                                 icon: Icons.info_outline,
-                                label: 'Tentang Aplikasi',
-                                subtitle: 'Versi 1.0.0',
+                                label: lang.tr('Tentang Aplikasi'),
+                                subtitle: lang.tr('Versi 1.0.0'),
                                 onTap: _showAboutDialog,
                               ),
                               _buildMenuItem(
                                 icon: Icons.privacy_tip_outlined,
-                                label: 'Kebijakan Privasi',
+                                label: lang.tr('Kebijakan Privasi'),
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Halaman kebijakan privasi'),
+                                      content: Text(lang.tr('Halaman kebijakan privasi')),
                                       backgroundColor: const Color(0xFF4A3022),
                                       behavior: SnackBarBehavior.floating,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -416,11 +426,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               _buildMenuItem(
                                 icon: Icons.help_outline,
-                                label: 'Bantuan',
+                                label: lang.tr('Bantuan'),
                                 onTap: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Hubungi kami di support@cikscoffee.com'),
+                                      content: Text(lang.tr('Hubungi kami di support@cikscoffee.com')),
                                       backgroundColor: const Color(0xFF4A3022),
                                       behavior: SnackBarBehavior.floating,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -438,7 +448,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onPressed: _logout,
                                 icon: const Icon(Icons.logout, size: 18),
                                 label: Text(
-                                  'Keluar dari Akun',
+                                  lang.tr('Keluar dari Akun'),
                                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                                 ),
                                 style: ElevatedButton.styleFrom(
@@ -598,6 +608,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showInfoSheet() {
     if (_user == null) return;
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -613,7 +624,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Informasi Pribadi',
+                lang.tr('Informasi Pribadi'),
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -621,13 +632,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              _buildInfoRow(Icons.person_outline, 'Nama', _user!.name),
+              _buildInfoRow(Icons.person_outline, lang.tr('Nama'), _user!.name),
               const SizedBox(height: 14),
               _buildInfoRow(Icons.email_outlined, 'Email', _user!.email),
               const SizedBox(height: 14),
-              _buildInfoRow(Icons.phone_outlined, 'Telepon', _user!.phone ?? 'Belum diatur'),
+              _buildInfoRow(Icons.phone_outlined, lang.tr('Telepon'), _user!.phone ?? lang.tr('Belum diatur')),
               const SizedBox(height: 14),
-              _buildInfoRow(Icons.badge_outlined, 'Role', _user!.role.toUpperCase()),
+              _buildInfoRow(Icons.badge_outlined, lang.tr('Peran'), _user!.role.toUpperCase()),
               const SizedBox(height: 8),
             ],
           ),
