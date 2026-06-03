@@ -45,4 +45,32 @@ class ProductModel {
     }
     return price;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'image_url': imageUrl,
+      'price': price,
+      'price_lite': priceLite,
+      'categoryName': categoryName,
+      'isCoffee': isCoffee,
+    };
+  }
+
+  factory ProductModel.fromLocalJson(Map<String, dynamic> json) {
+    return ProductModel(
+      id: json['id'],
+      name: json['name'] ?? '',
+      description: json['description'],
+      imageUrl: json['image_url'],
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
+      priceLite: json['price_lite'] != null
+          ? double.tryParse(json['price_lite'].toString())
+          : null,
+      categoryName: json['categoryName'],
+      isCoffee: json['isCoffee'] ?? false,
+    );
+  }
 }

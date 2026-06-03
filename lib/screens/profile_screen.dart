@@ -163,6 +163,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showPrivacyPolicyDialog() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.privacy_tip_outlined, color: Color(0xFF4A3022), size: 40),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang.tr('Kebijakan Privasi'),
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF4A3022),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang.isEnglish
+                    ? 'Your privacy is important to us. We collect your data only for order processing and improving service quality. We do not share your data with third parties without your explicit consent.'
+                    : 'Privasi Anda penting bagi kami. Kami mengumpulkan data Anda hanya untuk keperluan pemrosesan pesanan dan peningkatan layanan. Kami tidak membagikan data Anda kepada pihak ketiga tanpa izin Anda.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A3022),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showHelpDialog() {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.help_outline, color: Color(0xFF4A3022), size: 40),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang.tr('Bantuan'),
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF4A3022),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang.isEnglish
+                    ? 'Need help with your order or the application? Contact our customer support team.\n\nEmail: support@cikscoffee.com\nPhone: +62 812-3456-7890'
+                    : 'Butuh bantuan terkait pesanan atau penggunaan aplikasi? Hubungi tim layanan pelanggan kami.\n\nEmail: support@cikscoffee.com\nTelepon: +62 812-3456-7890',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A3022),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showLanguageSheet() {
     final lang = Provider.of<LanguageProvider>(context, listen: false);
     showModalBottomSheet(
@@ -432,30 +552,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildMenuItem(
                                 icon: Icons.privacy_tip_outlined,
                                 label: lang.tr('Kebijakan Privasi'),
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(lang.tr('Halaman kebijakan privasi')),
-                                      backgroundColor: const Color(0xFF4A3022),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                  );
-                                },
+                                onTap: _showPrivacyPolicyDialog,
                               ),
                               _buildMenuItem(
                                 icon: Icons.help_outline,
                                 label: lang.tr('Bantuan'),
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(lang.tr('Hubungi kami di support@cikscoffee.com')),
-                                      backgroundColor: const Color(0xFF4A3022),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                  );
-                                },
+                                onTap: _showHelpDialog,
                               ),
                             ]),
                             const SizedBox(height: 24),

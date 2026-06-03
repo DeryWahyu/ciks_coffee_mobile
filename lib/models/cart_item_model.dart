@@ -32,4 +32,20 @@ class CartItemModel {
       'price': unitPrice,
     };
   }
+
+  factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    return CartItemModel(
+      product: ProductModel.fromLocalJson(json['product']),
+      variant: json['variant'],
+      quantity: json['quantity'] ?? 1,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'product': product.toJson(),
+      'variant': variant,
+      'quantity': quantity,
+    };
+  }
 }

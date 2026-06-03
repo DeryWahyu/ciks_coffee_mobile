@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/order_model.dart';
 import '../services/api_service.dart';
+import '../providers/language_provider.dart';
+
+// Global notifier to trigger history refresh from other screens (e.g. OrderStatusScreen)
+final ValueNotifier<int> globalHistoryRefresh = ValueNotifier<int>(0);
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -21,6 +26,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _fetchHistory();
+    globalHistoryRefresh.addListener(_fetchHistoryBackground);
+  }
+
+  @override
+  void dispose() {
+    globalHistoryRefresh.removeListener(_fetchHistoryBackground);
+    super.dispose();
+  }
+
+  void _fetchHistoryBackground() async {
+    final result = await _apiService.getOrderHistory();
+    if (mounted && result['success']) {
+      final data = result['data'] as List<dynamic>;
+      setState(() {
+        _orders = data.map((o) => OrderModel.fromJson(o)).toList();
+      });
+    }
   }
 
   Future<void> _fetchHistory() async {
@@ -47,18 +69,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return formatCurrency.format(price);
   }
 
-  String _formatDate(String dateStr) {
+  String _formatDate(String dateStr, LanguageProvider lang) {
     try {
       final date = DateTime.parse(dateStr);
       final now = DateTime.now();
       final diff = now.difference(date);
 
       if (diff.inMinutes < 60) {
-        return '${diff.inMinutes} menit lalu';
+        return lang.isEnglish ? '${diff.inMinutes} mins ago' : '${diff.inMinutes} menit lalu';
       } else if (diff.inHours < 24) {
-        return '${diff.inHours} jam lalu';
+        return lang.isEnglish ? '${diff.inHours} hours ago' : '${diff.inHours} jam lalu';
       } else if (diff.inDays < 7) {
-        return '${diff.inDays} hari lalu';
+        return lang.isEnglish ? '${diff.inDays} days ago' : '${diff.inDays} hari lalu';
       } else {
         return DateFormat('dd MMM yyyy').format(date);
       }
@@ -67,10 +89,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  String _formatFullDate(String dateStr) {
+  String _formatFullDate(String dateStr, LanguageProvider lang) {
     try {
       final date = DateTime.parse(dateStr);
-      return DateFormat('EEEE, dd MMMM yyyy • HH:mm', 'id_ID').format(date);
+      return DateFormat(lang.isEnglish ? 'EEEE, MMMM dd yyyy • HH:mm' : 'EEEE, dd MMMM yyyy • HH:mm', lang.isEnglish ? 'en_US' : 'id_ID').format(date);
     } catch (_) {
       return dateStr;
     }
@@ -78,10 +100,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       appBar: AppBar(
-        title: Text('Riwayat Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text(lang.isEnglish ? 'Order History' : 'Riwayat Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF4A3022),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -90,9 +114,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A3022)))
           : _errorMessage != null
-              ? _buildErrorState()
+              ? _buildErrorState(lang)
               : _orders.isEmpty
-                  ? _buildEmptyState()
+                  ? _buildEmptyState(lang)
                   : RefreshIndicator(
                       onRefresh: _fetchHistory,
                       color: const Color(0xFF4A3022),
@@ -128,7 +152,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${_orders.length} Pesanan',
+                                      '${_orders.length} ${lang.isEnglish ? 'Orders' : 'Pesanan'}',
                                       style: GoogleFonts.inter(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -152,7 +176,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             child: ListView.builder(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                               itemCount: _orders.length,
-                              itemBuilder: (context, index) => _buildHistoryCard(_orders[index]),
+                              itemBuilder: (context, index) => _buildHistoryCard(_orders[index], lang),
                             ),
                           ),
                         ],
@@ -161,7 +185,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(LanguageProvider lang) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -176,7 +200,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Belum Ada Riwayat',
+            lang.isEnglish ? 'No History Yet' : 'Belum Ada Riwayat',
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -185,7 +209,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Pesanan yang sudah diambil\nakan muncul di sini.',
+            lang.isEnglish ? 'Orders that have been picked up\nwill appear here.' : 'Pesanan yang sudah diambil\nakan muncul di sini.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -209,7 +233,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(LanguageProvider lang) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -217,7 +241,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Icon(Icons.error_outline, size: 56, color: Colors.red.shade300),
           const SizedBox(height: 16),
           Text(
-            _errorMessage ?? 'Terjadi kesalahan',
+            _errorMessage ?? (lang.isEnglish ? 'An error occurred' : 'Terjadi kesalahan'),
             style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
             textAlign: TextAlign.center,
           ),
@@ -225,7 +249,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ElevatedButton.icon(
             onPressed: _fetchHistory,
             icon: const Icon(Icons.refresh, size: 18),
-            label: Text('Coba Lagi', style: GoogleFonts.inter()),
+            label: Text(lang.isEnglish ? 'Try Again' : 'Coba Lagi', style: GoogleFonts.inter()),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4A3022),
               foregroundColor: Colors.white,
@@ -237,9 +261,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildHistoryCard(OrderModel order) {
+  Widget _buildHistoryCard(OrderModel order, LanguageProvider lang) {
     return GestureDetector(
-      onTap: () => _showDetailSheet(order),
+      onTap: () => _showDetailSheet(order, lang),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
@@ -283,7 +307,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Icon(Icons.access_time, size: 12, color: const Color(0xFF4A3022).withValues(alpha: 0.4)),
                       const SizedBox(width: 4),
                       Text(
-                        _formatDate(order.createdAt),
+                        _formatDate(order.createdAt, lang),
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -330,7 +354,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  void _showDetailSheet(OrderModel order) {
+  void _showDetailSheet(OrderModel order, LanguageProvider lang) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -367,7 +391,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Detail Pesanan',
+                          lang.isEnglish ? 'Order Details' : 'Detail Pesanan',
                           style: GoogleFonts.inter(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -396,7 +420,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           const Icon(Icons.check_circle, size: 14, color: Color(0xFF4CAF50)),
                           const SizedBox(width: 4),
                           Text(
-                            'Selesai',
+                            lang.isEnglish ? 'Done' : 'Selesai',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -418,7 +442,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Icon(Icons.calendar_today, size: 14, color: const Color(0xFF4A3022).withValues(alpha: 0.4)),
                     const SizedBox(width: 6),
                     Text(
-                      _formatFullDate(order.createdAt),
+                      _formatFullDate(order.createdAt, lang),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -497,7 +521,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           Icon(Icons.payment, size: 18, color: const Color(0xFF4A3022).withValues(alpha: 0.5)),
                           const SizedBox(width: 8),
                           Text(
-                            'Metode Pembayaran',
+                            lang.isEnglish ? 'Payment Method' : 'Metode Pembayaran',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: const Color(0xFF4A3022).withValues(alpha: 0.5),

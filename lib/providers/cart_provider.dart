@@ -1,9 +1,39 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item_model.dart';
 import '../models/product_model.dart';
 
 class CartProvider extends ChangeNotifier {
-  final Map<String, CartItemModel> _items = {};
+  Map<String, CartItemModel> _items = {};
+
+  CartProvider() {
+    _loadCart();
+  }
+
+  Future<void> _loadCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cartData = prefs.getString('cart_data');
+      if (cartData != null) {
+        final decoded = json.decode(cartData) as Map<String, dynamic>;
+        _items = decoded.map((key, value) => MapEntry(key, CartItemModel.fromJson(value)));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading cart: $e');
+    }
+  }
+
+  Future<void> _saveCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = json.encode(_items.map((key, value) => MapEntry(key, value.toJson())));
+      await prefs.setString('cart_data', encoded);
+    } catch (e) {
+      debugPrint('Error saving cart: $e');
+    }
+  }
 
   /// Unmodifiable view of all cart items
   Map<String, CartItemModel> get items => Map.unmodifiable(_items);
@@ -35,6 +65,7 @@ class CartProvider extends ChangeNotifier {
         quantity: 1,
       );
     }
+    _saveCart();
     notifyListeners();
   }
 
@@ -47,12 +78,14 @@ class CartProvider extends ChangeNotifier {
     } else {
       _items.remove(key);
     }
+    _saveCart();
     notifyListeners();
   }
 
   /// Completely remove a product from the cart
   void deleteItem(String key) {
     _items.remove(key);
+    _saveCart();
     notifyListeners();
   }
 
@@ -65,12 +98,14 @@ class CartProvider extends ChangeNotifier {
     } else {
       _items[key]!.quantity = quantity;
     }
+    _saveCart();
     notifyListeners();
   }
 
   /// Clear the entire cart
   void clear() {
     _items.clear();
+    _saveCart();
     notifyListeners();
   }
 

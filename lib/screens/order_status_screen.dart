@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/order_model.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../screens/history_screen.dart';
 
 class OrderStatusScreen extends StatefulWidget {
   const OrderStatusScreen({super.key});
@@ -184,6 +185,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         );
         if (result['success']) {
           _fetchActiveOrders();
+          globalHistoryRefresh.value++; // Trigger HistoryScreen refresh
         }
       }
     }
@@ -372,7 +374,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${_formatTime(order.createdAt)} • ${order.paymentMethod.toUpperCase()}',
+                        order.paymentMethod.toUpperCase(),
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: const Color(0xFF4A3022).withValues(alpha: 0.5),
