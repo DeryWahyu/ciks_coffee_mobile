@@ -7,6 +7,7 @@ class ProductModel {
   final double? priceLite;
   final String? categoryName;
   final bool isCoffee;
+  final bool isAvailable;
 
   ProductModel({
     required this.id,
@@ -17,6 +18,7 @@ class ProductModel {
     this.priceLite,
     this.categoryName,
     this.isCoffee = false,
+    this.isAvailable = true,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class ProductModel {
           : null,
       categoryName: category?['name'],
       isCoffee: categorySlug == 'coffee',
+      isAvailable: json['is_available'] ?? true,
     );
   }
 
@@ -56,6 +59,7 @@ class ProductModel {
       'price_lite': priceLite,
       'categoryName': categoryName,
       'isCoffee': isCoffee,
+      'is_available': isAvailable,
     };
   }
 
@@ -71,6 +75,7 @@ class ProductModel {
           : null,
       categoryName: json['categoryName'],
       isCoffee: json['isCoffee'] ?? false,
+      isAvailable: json['is_available'] ?? true,
     );
   }
 }

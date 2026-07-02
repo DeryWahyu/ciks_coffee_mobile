@@ -528,6 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           (context, index) {
                             final product = _products[index];
                             final imageUrl = _apiService.getImageUrl(product['image_url'] ?? '');
+                            final isAvailable = (product['is_available'] ?? true) == true;
                             
                             return Container(
                               decoration: BoxDecoration(
@@ -549,14 +550,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                     flex: 4,
                                     child: ClipRRect(
                                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                      child: imageUrl.isNotEmpty
-                                          ? Image.network(
-                                              imageUrl,
-                                              width: double.infinity,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-                                            )
-                                          : _buildPlaceholder(),
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          imageUrl.isNotEmpty
+                                              ? Image.network(
+                                                  imageUrl,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                  color: isAvailable ? null : const Color(0xFF000000).withValues(alpha: 0.55),
+                                                  colorBlendMode: isAvailable ? null : BlendMode.darken,
+                                                  errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                                                )
+                                              : _buildPlaceholder(),
+                                          if (!isAvailable)
+                                            Center(
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF4A3022),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  lang.tr('Habis'),
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   // Info
@@ -608,11 +635,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ),
                                               ),
                                               GestureDetector(
-                                                onTap: () => _handleAddToCart(product),
+                                                onTap: isAvailable ? () => _handleAddToCart(product) : null,
                                                 child: Container(
                                                   padding: const EdgeInsets.all(4),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFF4A3022),
+                                                    color: isAvailable
+                                                        ? const Color(0xFF4A3022)
+                                                        : const Color(0xFFBDBDBD),
                                                     borderRadius: BorderRadius.circular(8),
                                                   ),
                                                   child: const Icon(
