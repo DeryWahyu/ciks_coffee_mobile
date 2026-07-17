@@ -427,10 +427,11 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       appBar: AppBar(
-        title: Text(lang.tr('Keranjang'), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF4A3022),
-        foregroundColor: Colors.white,
+        title: Text(lang.tr('Keranjang'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022))),
+        backgroundColor: const Color(0xFFF5E6D3),
+        foregroundColor: const Color(0xFF4A3022),
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
       ),
       body: Consumer<CartProvider>(

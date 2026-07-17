@@ -236,10 +236,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       appBar: AppBar(
-        title: Text(lang.isEnglish ? 'Order Status' : 'Status Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF4A3022),
-        foregroundColor: Colors.white,
+        title: Text(lang.isEnglish ? 'Order Status' : 'Status Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022))),
+        backgroundColor: const Color(0xFFF5E6D3),
+        foregroundColor: const Color(0xFF4A3022),
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
       ),
       body: _isLoading
