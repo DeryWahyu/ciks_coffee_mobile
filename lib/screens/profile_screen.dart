@@ -65,7 +65,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           lang.tr('Keluar'),
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022)),
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF4A3022),
+          ),
         ),
         content: Text(
           lang.tr('Apakah kamu yakin ingin keluar dari akun ini?'),
@@ -74,7 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(lang.tr('Batal'), style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(
+              lang.tr('Batal'),
+              style: GoogleFonts.inter(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -88,9 +94,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: Text(lang.tr('Keluar'), style: GoogleFonts.inter(color: Colors.white)),
+            child: Text(
+              lang.tr('Keluar'),
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -114,7 +125,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFF4A3022).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.coffee, color: Color(0xFF4A3022), size: 40),
+                child: const Icon(
+                  Icons.coffee,
+                  color: Color(0xFF4A3022),
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -135,7 +150,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                lang.tr('Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!'),
+                lang.tr(
+                  'Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!',
+                ),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 13,
@@ -150,10 +167,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => Navigator.of(ctx).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
+                  child: Text(
+                    lang.tr('Tutup'),
+                    style: GoogleFonts.inter(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -180,7 +202,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFF4A3022).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.privacy_tip_outlined, color: Color(0xFF4A3022), size: 40),
+                child: const Icon(
+                  Icons.privacy_tip_outlined,
+                  color: Color(0xFF4A3022),
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -210,10 +236,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => Navigator.of(ctx).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
+                  child: Text(
+                    lang.tr('Tutup'),
+                    style: GoogleFonts.inter(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -240,7 +271,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFF4A3022).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.help_outline, color: Color(0xFF4A3022), size: 40),
+                child: const Icon(
+                  Icons.help_outline,
+                  color: Color(0xFF4A3022),
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -270,10 +305,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => Navigator.of(ctx).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: Text(lang.tr('Tutup'), style: GoogleFonts.inter(color: Colors.white)),
+                  child: Text(
+                    lang.tr('Tutup'),
+                    style: GoogleFonts.inter(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -328,10 +368,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         lang.toggleLanguage(isEnglishOption);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(lang.isEnglish ? 'Language changed to $name' : 'Bahasa diubah ke $name'),
+            content: Text(
+              lang.isEnglish
+                  ? 'Language changed to $name'
+                  : 'Bahasa diubah ke $name',
+            ),
             backgroundColor: const Color(0xFF4A3022),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       },
@@ -340,10 +386,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected ? const Color(0xFF4A3022) : const Color(0xFFD2B48C),
+            color: isSelected
+                ? const Color(0xFF4A3022)
+                : const Color(0xFFD2B48C),
           ),
           borderRadius: BorderRadius.circular(14),
-          color: isSelected ? const Color(0xFF4A3022).withValues(alpha: 0.05) : null,
+          color: isSelected
+              ? const Color(0xFF4A3022).withValues(alpha: 0.05)
+              : null,
         ),
         child: Row(
           children: [
@@ -359,7 +409,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: Color(0xFF4A3022), size: 20),
+              const Icon(
+                Icons.check_circle,
+                color: Color(0xFF4A3022),
+                size: 20,
+              ),
           ],
         ),
       ),
@@ -369,228 +423,266 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5E6D3),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A3022)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF4A3022)),
+            )
           : _user == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                      const SizedBox(height: 12),
-                      Text(lang.tr('Gagal memuat profil.'), style: GoogleFonts.inter(color: const Color(0xFF4A3022))),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _fetchProfile,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A3022)),
-                        child: Text(lang.tr('Coba Lagi'), style: GoogleFonts.inter(color: Colors.white)),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.red.shade300,
                   ),
-                )
-              : CustomScrollView(
-                  slivers: [
-                    // Profile Header
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF4A3022),
-                              const Color(0xFF4A3022).withValues(alpha: 0.9),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-                        ),
-                        child: Column(
-                          children: [
-                            // Avatar
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: 44,
-                                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                                child: Text(
-                                  _user!.name.isNotEmpty ? _user!.name[0].toUpperCase() : '?',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
+                  const SizedBox(height: 12),
+                  Text(
+                    lang.tr('Gagal memuat profil.'),
+                    style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _fetchProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A3022),
+                    ),
+                    child: Text(
+                      lang.tr('Coba Lagi'),
+                      style: GoogleFonts.inter(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                // Profile Header
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF4A3022),
+                          const Color(0xFF4A3022).withValues(alpha: 0.9),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(32),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              width: 2,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _user!.name,
+                          ),
+                          child: CircleAvatar(
+                            radius: 44,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.15,
+                            ),
+                            child: Text(
+                              _user!.name.isNotEmpty
+                                  ? _user!.name[0].toUpperCase()
+                                  : '?',
                               style: GoogleFonts.inter(
-                                fontSize: 22,
+                                fontSize: 36,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _user!.email,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: Colors.white.withValues(alpha: 0.7),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _user!.role.toUpperCase(),
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-
-                    // Menu Options
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Account Section
-                            Text(
-                              lang.tr('AKUN'),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
-                                color: const Color(0xFF4A3022).withValues(alpha: 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            _buildMenuCard([
-                              _buildMenuItem(
-                                icon: Icons.person_outline,
-                                label: lang.tr('Informasi Pribadi'),
-                                subtitle: _user!.email,
-                                onTap: () => _showInfoSheet(),
-                              ),
-                              _buildMenuItem(
-                                icon: Icons.phone_outlined,
-                                label: lang.tr('Nomor Telepon'),
-                                subtitle: _user!.phone ?? lang.tr('Belum diatur'),
-                                onTap: () => _showInfoSheet(),
-                              ),
-                            ]),
-                            const SizedBox(height: 24),
-
-                            // Preferences Section
-                            Text(
-                              lang.tr('PREFERENSI'),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
-                                color: const Color(0xFF4A3022).withValues(alpha: 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            _buildMenuCard([
-                              _buildMenuItemSwitch(
-                                icon: Icons.notifications_outlined,
-                                label: lang.tr('Notifikasi'),
-                                subtitle: _notificationsEnabled ? lang.tr('Aktif') : lang.tr('Nonaktif'),
-                                value: _notificationsEnabled,
-                                onChanged: _toggleNotification,
-                              ),
-                              _buildMenuItem(
-                                icon: Icons.language,
-                                label: lang.tr('Bahasa'),
-                                subtitle: lang.isEnglish ? 'English' : 'Bahasa Indonesia',
-                                onTap: _showLanguageSheet,
-                              ),
-                            ]),
-                            const SizedBox(height: 24),
-
-                            // Info Section
-                            Text(
-                              lang.tr('LAINNYA'),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
-                                color: const Color(0xFF4A3022).withValues(alpha: 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            _buildMenuCard([
-                              _buildMenuItem(
-                                icon: Icons.info_outline,
-                                label: lang.tr('Tentang Aplikasi'),
-                                subtitle: lang.tr('Versi 1.0.0'),
-                                onTap: _showAboutDialog,
-                              ),
-                              _buildMenuItem(
-                                icon: Icons.privacy_tip_outlined,
-                                label: lang.tr('Kebijakan Privasi'),
-                                onTap: _showPrivacyPolicyDialog,
-                              ),
-                              _buildMenuItem(
-                                icon: Icons.help_outline,
-                                label: lang.tr('Bantuan'),
-                                onTap: _showHelpDialog,
-                              ),
-                            ]),
-                            const SizedBox(height: 24),
-
-                            // Logout Button
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: _logout,
-                                icon: const Icon(Icons.logout, size: 18),
-                                label: Text(
-                                  lang.tr('Keluar dari Akun'),
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.red.shade600,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    side: BorderSide(color: Colors.red.shade200),
-                                  ),
-                                  elevation: 0,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
+                        const SizedBox(height: 16),
+                        Text(
+                          _user!.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _user!.email,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _user!.role.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
+
+                // Menu Options
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Account Section
+                        Text(
+                          lang.tr('AKUN'),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: const Color(
+                              0xFF4A3022,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuCard([
+                          _buildMenuItem(
+                            icon: Icons.person_outline,
+                            label: lang.tr('Informasi Pribadi'),
+                            subtitle: _user!.email,
+                            onTap: () => _showInfoSheet(),
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.phone_outlined,
+                            label: lang.tr('Nomor Telepon'),
+                            subtitle: _user!.phone ?? lang.tr('Belum diatur'),
+                            onTap: () => _showInfoSheet(),
+                          ),
+                        ]),
+                        const SizedBox(height: 24),
+
+                        // Preferences Section
+                        Text(
+                          lang.tr('PREFERENSI'),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: const Color(
+                              0xFF4A3022,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuCard([
+                          _buildMenuItemSwitch(
+                            icon: Icons.notifications_outlined,
+                            label: lang.tr('Notifikasi'),
+                            subtitle: _notificationsEnabled
+                                ? lang.tr('Aktif')
+                                : lang.tr('Nonaktif'),
+                            value: _notificationsEnabled,
+                            onChanged: _toggleNotification,
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.language,
+                            label: lang.tr('Bahasa'),
+                            subtitle: lang.isEnglish
+                                ? 'English'
+                                : 'Bahasa Indonesia',
+                            onTap: _showLanguageSheet,
+                          ),
+                        ]),
+                        const SizedBox(height: 24),
+
+                        // Info Section
+                        Text(
+                          lang.tr('LAINNYA'),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: const Color(
+                              0xFF4A3022,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildMenuCard([
+                          _buildMenuItem(
+                            icon: Icons.info_outline,
+                            label: lang.tr('Tentang Aplikasi'),
+                            subtitle: lang.tr('Versi 1.0.0'),
+                            onTap: _showAboutDialog,
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.privacy_tip_outlined,
+                            label: lang.tr('Kebijakan Privasi'),
+                            onTap: _showPrivacyPolicyDialog,
+                          ),
+                          _buildMenuItem(
+                            icon: Icons.help_outline,
+                            label: lang.tr('Bantuan'),
+                            onTap: _showHelpDialog,
+                          ),
+                        ]),
+                        const SizedBox(height: 24),
+
+                        // Logout Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _logout,
+                            icon: const Icon(Icons.logout, size: 18),
+                            label: Text(
+                              lang.tr('Keluar dari Akun'),
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.red.shade600,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(color: Colors.red.shade200),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -614,7 +706,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               entry.value,
               if (!isLast)
-                Divider(height: 1, indent: 56, color: const Color(0xFFD2B48C).withValues(alpha: 0.2)),
+                Divider(
+                  height: 1,
+                  indent: 56,
+                  color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
+                ),
             ],
           );
         }).toList(),
@@ -667,7 +763,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 18, color: const Color(0xFF4A3022).withValues(alpha: 0.3)),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: const Color(0xFF4A3022).withValues(alpha: 0.3),
+            ),
           ],
         ),
       ),
@@ -719,7 +819,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF4A3022),
+            activeThumbColor: const Color(0xFF4A3022),
             activeTrackColor: const Color(0xFFD2B48C),
           ),
         ],
@@ -757,9 +857,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 14),
               _buildInfoRow(Icons.email_outlined, 'Email', _user!.email),
               const SizedBox(height: 14),
-              _buildInfoRow(Icons.phone_outlined, lang.tr('Telepon'), _user!.phone ?? lang.tr('Belum diatur')),
+              _buildInfoRow(
+                Icons.phone_outlined,
+                lang.tr('Telepon'),
+                _user!.phone ?? lang.tr('Belum diatur'),
+              ),
               const SizedBox(height: 14),
-              _buildInfoRow(Icons.badge_outlined, lang.tr('Peran'), _user!.role.toUpperCase()),
+              _buildInfoRow(
+                Icons.badge_outlined,
+                lang.tr('Peran'),
+                _user!.role.toUpperCase(),
+              ),
               const SizedBox(height: 8),
             ],
           ),

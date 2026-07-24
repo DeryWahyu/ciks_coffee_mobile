@@ -9,6 +9,7 @@ import 'cart_screen.dart';
 import 'order_status_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
+import 'table_availability_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui';
@@ -22,17 +23,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
-  
+
   List<dynamic> _categories = [];
   List<dynamic> _products = [];
-  
+
   bool _isLoadingCategories = true;
   bool _isLoadingProducts = true;
-  
+
   int _selectedCategoryId = 0; // 0 means 'All'
   int _currentIndex = 0; // For BottomNavigationBar
-  String? _userName;
-
   bool _bannerAnimReady = false;
 
   @override
@@ -52,23 +51,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedName = prefs.getString('user_name');
-    if (cachedName != null && cachedName.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _userName = cachedName;
-        });
-      }
-    }
-
     final result = await _apiService.getProfile();
     if (result['success'] && result['data'] != null) {
       final name = result['data']['name']?.toString();
-      if (name != null && name.isNotEmpty && mounted) {
+      if (name != null && name.isNotEmpty) {
         await prefs.setString('user_name', name);
-        setState(() {
-          _userName = name;
-        });
       }
     }
   }
@@ -87,9 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isLoadingCategories = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'])),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result['message'])));
       }
     }
   }
@@ -98,7 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isLoadingProducts = true;
     });
-    final result = await _apiService.getProducts(categoryId: _selectedCategoryId);
+    final result = await _apiService.getProducts(
+      categoryId: _selectedCategoryId,
+    );
     if (result['success']) {
       if (mounted) {
         setState(() {
@@ -111,9 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isLoadingProducts = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'])),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result['message'])));
       }
     }
   }
@@ -128,7 +117,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _formatPrice(dynamic price) {
     if (price == null) return 'Rp 0';
-    final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final formatCurrency = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
     return formatCurrency.format(double.parse(price.toString()));
   }
 
@@ -180,7 +173,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showVariantPicker(ProductModel product, CartProvider cart, LanguageProvider lang) {
+  void _showVariantPicker(
+    ProductModel product,
+    CartProvider cart,
+    LanguageProvider lang,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -348,13 +345,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 '$productName ${lang.tr('ditambahkan ke keranjang')}',
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -371,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E8),
       extendBody: true,
@@ -512,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeContent() {
     final lang = Provider.of<LanguageProvider>(context);
-    
+
     return RefreshIndicator(
       onRefresh: () async {
         await _fetchCategories();
@@ -521,7 +525,9 @@ class _HomeScreenState extends State<HomeScreen> {
       color: const Color(0xFF2C1810),
       backgroundColor: Colors.white,
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           // ============================================
           // PROMO BANNER SECTION
@@ -554,7 +560,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF5D3A1A).withValues(alpha: 0.30),
+                            color: const Color(
+                              0xFF5D3A1A,
+                            ).withValues(alpha: 0.30),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
@@ -594,14 +602,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -664,6 +680,95 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // ============================================
+          // TABLE AVAILABILITY SHORTCUT
+          // ============================================
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const TableAvailabilityScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(18),
+                  child: Ink(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(
+                        color: const Color(0xFFDCC7B4).withValues(alpha: 0.8),
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF5D3A1A,
+                          ).withValues(alpha: 0.07),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 45,
+                          height: 45,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F7F1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.event_seat_rounded,
+                            color: Color(0xFF16856F),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 13),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cari meja yang tersedia',
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF2C1810),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Lihat denah dan status meja secara langsung',
+                                style: GoogleFonts.inter(
+                                  color: const Color(
+                                    0xFF5D3A1A,
+                                  ).withValues(alpha: 0.58),
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Color(0xFF805434),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ============================================
           // CATEGORIES SECTION
           // ============================================
           SliverToBoxAdapter(
@@ -702,10 +807,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _isLoadingCategories
                 ? const SizedBox(
                     height: 44,
-                    child: Center(child: CircularProgressIndicator(
-                      color: Color(0xFF5D3A1A),
-                      strokeWidth: 2.5,
-                    )),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF5D3A1A),
+                        strokeWidth: 2.5,
+                      ),
+                    ),
                   )
                 : SizedBox(
                     height: 44,
@@ -717,7 +824,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         final isAll = index == 0;
                         final category = isAll ? null : _categories[index - 1];
                         final id = isAll ? 0 : category['id'];
-                        final name = isAll ? lang.tr('Semua') : category['name'];
+                        final name = isAll
+                            ? lang.tr('Semua')
+                            : category['name'];
                         final isSelected = _selectedCategoryId == id;
 
                         // Category icons mapping
@@ -725,14 +834,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (isAll) {
                           categoryIcon = Icons.apps_rounded;
                         } else {
-                          final catName = (category['name'] ?? '').toString().toLowerCase();
-                          if (catName.contains('kopi') || catName.contains('coffee')) {
+                          final catName = (category['name'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          if (catName.contains('kopi') ||
+                              catName.contains('coffee')) {
                             categoryIcon = Icons.coffee_rounded;
-                          } else if (catName.contains('non') || catName.contains('minuman')) {
+                          } else if (catName.contains('non') ||
+                              catName.contains('minuman')) {
                             categoryIcon = Icons.local_cafe_rounded;
-                          } else if (catName.contains('makan') || catName.contains('food') || catName.contains('snack')) {
+                          } else if (catName.contains('makan') ||
+                              catName.contains('food') ||
+                              catName.contains('snack')) {
                             categoryIcon = Icons.restaurant_rounded;
-                          } else if (catName.contains('dessert') || catName.contains('kue')) {
+                          } else if (catName.contains('dessert') ||
+                              catName.contains('kue')) {
                             categoryIcon = Icons.cake_rounded;
                           }
                         }
@@ -746,38 +862,48 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeInOut,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
                               decoration: BoxDecoration(
-                                gradient: isSelected 
-                                  ? const LinearGradient(
-                                      colors: [Color(0xFF2C1810), Color(0xFF5D3A1A)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                  : null,
+                                gradient: isSelected
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF2C1810),
+                                          Color(0xFF5D3A1A),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : null,
                                 color: isSelected ? null : Colors.white,
                                 borderRadius: BorderRadius.circular(14),
-                                border: isSelected 
-                                  ? null 
-                                  : Border.all(
-                                      color: const Color(0xFFE8DDD0),
-                                      width: 1,
-                                    ),
-                                boxShadow: isSelected 
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFF2C1810).withValues(alpha: 0.25),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
+                                border: isSelected
+                                    ? null
+                                    : Border.all(
+                                        color: const Color(0xFFE8DDD0),
+                                        width: 1,
                                       ),
-                                    ]
-                                  : [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.03),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF2C1810,
+                                          ).withValues(alpha: 0.25),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.03,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                               ),
                               child: Center(
                                 child: Row(
@@ -786,17 +912,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Icon(
                                       categoryIcon,
                                       size: 15,
-                                      color: isSelected 
-                                        ? const Color(0xFFD4A574) 
-                                        : const Color(0xFF8B7355),
+                                      color: isSelected
+                                          ? const Color(0xFFD4A574)
+                                          : const Color(0xFF8B7355),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       name,
                                       style: GoogleFonts.inter(
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                         fontSize: 13,
-                                        color: isSelected ? Colors.white : const Color(0xFF4A3930),
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF4A3930),
                                         letterSpacing: -0.2,
                                       ),
                                     ),
@@ -860,65 +990,75 @@ class _HomeScreenState extends State<HomeScreen> {
           // ============================================
           _isLoadingProducts
               ? const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(
-                    color: Color(0xFF5D3A1A),
-                    strokeWidth: 2.5,
-                  )),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF5D3A1A),
+                      strokeWidth: 2.5,
+                    ),
+                  ),
                 )
               : _products.isEmpty
-                  ? SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8DDD0).withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(
-                                Icons.search_off_rounded,
-                                size: 36,
-                                color: Color(0xFF8B7355),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              lang.tr('Tidak ada produk ditemukan.'),
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF8B7355),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+              ? SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFE8DDD0,
+                            ).withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.search_off_rounded,
+                            size: 36,
+                            color: Color(0xFF8B7355),
+                          ),
                         ),
-                      ),
-                    )
-                  : SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        const SizedBox(height: 16),
+                        Text(
+                          lang.tr('Tidak ada produk ditemukan.'),
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF8B7355),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           childAspectRatio: 0.64,
                           crossAxisSpacing: 14,
                           mainAxisSpacing: 14,
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final product = _products[index];
-                            final imageUrl = _apiService.getImageUrl(product['image_url'] ?? '');
-                            final isAvailable = (product['is_available'] ?? true) == true;
-                            
-                            return _buildProductCard(product, imageUrl, isAvailable, lang);
-                          },
-                          childCount: _products.length,
-                        ),
-                      ),
-                    ),
-          
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final product = _products[index];
+                      final imageUrl = _apiService.getImageUrl(
+                        product['image_url'] ?? '',
+                      );
+                      final isAvailable =
+                          (product['is_available'] ?? true) == true;
+
+                      return _buildProductCard(
+                        product,
+                        imageUrl,
+                        isAvailable,
+                        lang,
+                      );
+                    }, childCount: _products.length),
+                  ),
+                ),
+
           const SliverToBoxAdapter(child: SizedBox(height: 110)),
         ],
       ),
@@ -955,7 +1095,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             flex: 5,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -964,9 +1106,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           imageUrl,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          color: isAvailable ? null : const Color(0xFF000000).withValues(alpha: 0.55),
+                          color: isAvailable
+                              ? null
+                              : const Color(0xFF000000).withValues(alpha: 0.55),
                           colorBlendMode: isAvailable ? null : BlendMode.darken,
-                          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildPlaceholder(),
                         )
                       : _buildPlaceholder(),
                   // Category tag
@@ -979,9 +1124,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2C1810).withValues(alpha: 0.55),
+                              color: const Color(
+                                0xFF2C1810,
+                              ).withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -1005,9 +1155,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2C1810).withValues(alpha: 0.75),
+                              color: const Color(
+                                0xFF2C1810,
+                              ).withValues(alpha: 0.75),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.15),
@@ -1071,29 +1226,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 6),
                       GestureDetector(
-                        onTap: isAvailable ? () => _handleAddToCart(product) : null,
+                        onTap: isAvailable
+                            ? () => _handleAddToCart(product)
+                            : null,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
-                            gradient: isAvailable 
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF2C1810), Color(0xFF5D3A1A)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : null,
+                            gradient: isAvailable
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF2C1810),
+                                      Color(0xFF5D3A1A),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
                             color: isAvailable ? null : const Color(0xFFCCC5BC),
                             borderRadius: BorderRadius.circular(10),
-                            boxShadow: isAvailable 
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF2C1810).withValues(alpha: 0.25),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ]
-                              : null,
+                            boxShadow: isAvailable
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF2C1810,
+                                      ).withValues(alpha: 0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: const Icon(
                             Icons.add_rounded,

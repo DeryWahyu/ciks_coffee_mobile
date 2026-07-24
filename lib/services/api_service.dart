@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/table_layout_model.dart';
 import '../models/user_model.dart';
 
 class ApiService {
@@ -17,22 +17,27 @@ class ApiService {
   String getImageUrl(String path) {
     if (path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    
+
     // Replace 'storage/' prefix if present, as our API route takes the raw path
     if (path.startsWith('storage/')) {
       path = path.replaceFirst('storage/', '');
     }
-    
+
     return '$baseUrl/image/$path';
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/login'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -41,23 +46,47 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          return {'success': false, 'message': data['message'] ?? 'Login failed'};
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Login failed',
+          };
         } catch (_) {
-          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+          return {
+            'success': false,
+            'message': 'Server error: ${response.statusCode}',
+          };
         }
       }
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi ke server gagal. Pastikan server berjalan. ($e)'};
+      return {
+        'success': false,
+        'message': 'Koneksi ke server gagal. Pastikan server berjalan. ($e)',
+      };
     }
   }
 
-  Future<Map<String, dynamic>> register(String name, String email, String phone, String password) async {
+  Future<Map<String, dynamic>> register(
+    String name,
+    String email,
+    String phone,
+    String password,
+  ) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/register'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'name': name, 'email': email, 'phone': phone, 'password': password}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/register'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'name': name,
+              'email': email,
+              'phone': phone,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -66,13 +95,22 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          return {'success': false, 'message': data['message'] ?? 'Registration failed'};
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Registration failed',
+          };
         } catch (_) {
-          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+          return {
+            'success': false,
+            'message': 'Server error: ${response.statusCode}',
+          };
         }
       }
     } catch (e) {
-      return {'success': false, 'message': 'Koneksi ke server gagal. Pastikan server berjalan. ($e)'};
+      return {
+        'success': false,
+        'message': 'Koneksi ke server gagal. Pastikan server berjalan. ($e)',
+      };
     }
   }
 
@@ -93,18 +131,20 @@ class ApiService {
       final token = await getToken();
       if (token == null) return false;
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/user'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/user'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       return response.statusCode == 200;
     } catch (e) {
-      print('[ApiService] validateToken error: $e');
+      debugPrint('[ApiService] validateToken error: $e');
       return false;
     }
   }
@@ -113,14 +153,16 @@ class ApiService {
     final token = await getToken();
     if (token != null) {
       try {
-        await http.post(
-          Uri.parse('$baseUrl/logout'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ).timeout(const Duration(seconds: 5));
+        await http
+            .post(
+              Uri.parse('$baseUrl/logout'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+            )
+            .timeout(const Duration(seconds: 5));
       } catch (_) {
         // Ignore errors during logout request
       }
@@ -132,30 +174,41 @@ class ApiService {
   Future<Map<String, dynamic>> getCategories() async {
     try {
       final token = await getToken();
-      final response = await http.get(
-        Uri.parse('$baseUrl/categories'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/categories'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data']};
       } else if (response.statusCode == 401) {
-        return {'success': false, 'message': 'Sesi telah berakhir. Silakan login ulang.'};
+        return {
+          'success': false,
+          'message': 'Sesi telah berakhir. Silakan login ulang.',
+        };
       } else {
-        return {'success': false, 'message': 'Gagal mengambil kategori (${response.statusCode})'};
+        return {
+          'success': false,
+          'message': 'Gagal mengambil kategori (${response.statusCode})',
+        };
       }
     } catch (e) {
-      print('[ApiService] getCategories error: $e');
+      debugPrint('[ApiService] getCategories error: $e');
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
 
-  Future<Map<String, dynamic>> getProducts({int? categoryId, String? search}) async {
+  Future<Map<String, dynamic>> getProducts({
+    int? categoryId,
+    String? search,
+  }) async {
     try {
       final token = await getToken();
       String url = '$baseUrl/products?';
@@ -166,25 +219,33 @@ class ApiService {
         url += 'search=$search';
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {'success': true, 'data': data['data']};
       } else if (response.statusCode == 401) {
-        return {'success': false, 'message': 'Sesi telah berakhir. Silakan login ulang.'};
+        return {
+          'success': false,
+          'message': 'Sesi telah berakhir. Silakan login ulang.',
+        };
       } else {
-        return {'success': false, 'message': 'Gagal mengambil produk (${response.statusCode})'};
+        return {
+          'success': false,
+          'message': 'Gagal mengambil produk (${response.statusCode})',
+        };
       }
     } catch (e) {
-      print('[ApiService] getProducts error: $e');
+      debugPrint('[ApiService] getProducts error: $e');
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
@@ -224,7 +285,8 @@ class ApiService {
 
       // Add items as indexed fields (Laravel array format)
       for (int i = 0; i < items.length; i++) {
-        request.fields['items[$i][product_id]'] = items[i]['product_id'].toString();
+        request.fields['items[$i][product_id]'] = items[i]['product_id']
+            .toString();
         request.fields['items[$i][quantity]'] = items[i]['quantity'].toString();
         request.fields['items[$i][price]'] = items[i]['price'].toString();
         if (items[i]['variant'] != null) {
@@ -239,7 +301,9 @@ class ApiService {
         );
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -258,7 +322,10 @@ class ApiService {
           }
           return {'success': false, 'message': errorMessage};
         } catch (_) {
-          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+          return {
+            'success': false,
+            'message': 'Server error: ${response.statusCode}',
+          };
         }
       }
     } catch (e) {
@@ -270,10 +337,9 @@ class ApiService {
   Future<Map<String, dynamic>> getActiveOrders() async {
     try {
       final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/orders/active'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse('$baseUrl/orders/active'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -290,10 +356,9 @@ class ApiService {
   Future<Map<String, dynamic>> getOrderHistory() async {
     try {
       final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/orders/history'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse('$baseUrl/orders/history'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -310,10 +375,9 @@ class ApiService {
   Future<Map<String, dynamic>> getProfile() async {
     try {
       final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/user'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse('$baseUrl/user'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -330,10 +394,9 @@ class ApiService {
   Future<Map<String, dynamic>> confirmPickup(int orderId) async {
     try {
       final headers = await _authHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/orders/$orderId/pickup'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(Uri.parse('$baseUrl/orders/$orderId/pickup'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -341,9 +404,15 @@ class ApiService {
       } else {
         try {
           final data = jsonDecode(response.body);
-          return {'success': false, 'message': data['message'] ?? 'Gagal konfirmasi'};
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Gagal konfirmasi',
+          };
         } catch (_) {
-          return {'success': false, 'message': 'Server error: ${response.statusCode}'};
+          return {
+            'success': false,
+            'message': 'Server error: ${response.statusCode}',
+          };
         }
       }
     } catch (e) {
@@ -355,10 +424,9 @@ class ApiService {
   Future<Map<String, dynamic>> getQrisImage() async {
     try {
       final headers = await _authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/shop/qris'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(Uri.parse('$baseUrl/shop/qris'), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -366,7 +434,10 @@ class ApiService {
           final imagePath = data['data']['image_url'] ?? '';
           return {'success': true, 'image_url': getImageUrl(imagePath)};
         }
-        return {'success': false, 'message': data['message'] ?? 'QRIS tidak tersedia'};
+        return {
+          'success': false,
+          'message': data['message'] ?? 'QRIS tidak tersedia',
+        };
       } else {
         return {'success': false, 'message': 'QRIS tidak tersedia'};
       }
@@ -374,5 +445,54 @@ class ApiService {
       return {'success': false, 'message': 'Koneksi error: $e'};
     }
   }
-}
 
+  /// Fetch the customer-facing, read-only table availability layout.
+  Future<Map<String, dynamic>> getTableLayout() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http
+          .get(Uri.parse('$baseUrl/table-layout'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      final data = _decodeResponse(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final rawLayout = data['data'];
+        if (rawLayout is Map) {
+          return {
+            'success': true,
+            'data': TableLayoutData.fromJson(
+              Map<String, dynamic>.from(rawLayout),
+            ),
+          };
+        }
+      }
+
+      if (response.statusCode == 401) {
+        return {
+          'success': false,
+          'message': 'Sesi telah berakhir. Silakan login ulang.',
+        };
+      }
+
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Denah meja belum dapat dimuat.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Koneksi ke server gagal. Periksa jaringan Anda.',
+      };
+    }
+  }
+
+  Map<String, dynamic> _decodeResponse(String body) {
+    try {
+      final data = jsonDecode(body);
+      if (data is Map) return Map<String, dynamic>.from(data);
+    } catch (_) {
+      // A friendly generic error is returned by the caller for invalid JSON.
+    }
+    return const {};
+  }
+}
