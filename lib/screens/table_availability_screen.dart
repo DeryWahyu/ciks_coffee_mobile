@@ -523,6 +523,19 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     final statusStyle = _statusStyleFor(table.status);
     final tableWidth = table.width / 100 * width;
     final tableHeight = table.height / 100 * height;
+    final smallestTableSide = math.min(tableWidth, tableHeight);
+    final codeFontSize = math.max(3.5, math.min(9.0, smallestTableSide * 0.24));
+    final nameFontSize = math.max(2.8, math.min(6.5, smallestTableSide * 0.16));
+    final capacityFontSize = math.max(
+      2.8,
+      math.min(7.0, smallestTableSide * 0.17),
+    );
+    final iconSize = math.max(3.5, math.min(8.0, smallestTableSide * 0.18));
+    final contentPadding = math.max(
+      0.5,
+      math.min(3.0, smallestTableSide * 0.08),
+    );
+    final chairSize = math.max(3.4, math.min(15.0, smallestTableSide * 0.38));
 
     return Positioned(
       left: table.positionX / 100 * width,
@@ -531,76 +544,223 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
       height: tableHeight,
       child: Transform.rotate(
         angle: table.rotation * math.pi / 180,
-        child: Semantics(
-          key: ValueKey('table-marker-${table.id}'),
-          button: true,
-          label: '${table.code}, ${table.capacity} kursi, ${table.statusLabel}',
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _showTableDetail(table),
-              borderRadius: _tableBorderRadius(table.shape),
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: statusStyle.soft,
-                  border: Border.all(color: statusStyle.color, width: 2),
-                  borderRadius: _tableBorderRadius(table.shape),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _espresso.withValues(alpha: 0.1),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            table.code,
-                            style: GoogleFonts.poppins(
-                              color: _espresso,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.person_rounded,
-                                color: _espresso.withValues(alpha: 0.55),
-                                size: 8,
-                              ),
-                              Text(
-                                '${table.capacity}',
-                                style: GoogleFonts.poppins(
-                                  color: _espresso.withValues(alpha: 0.63),
-                                  fontSize: 7,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1,
-                                ),
-                              ),
-                            ],
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ..._buildTableChairs(
+              table.capacity,
+              tableWidth,
+              tableHeight,
+              chairSize,
+            ),
+            Positioned.fill(
+              child: Semantics(
+                key: ValueKey('table-marker-${table.id}'),
+                button: true,
+                label:
+                    '${table.code}, ${table.name}, ${table.capacity} kursi, ${table.statusLabel}',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _showTableDetail(table),
+                    borderRadius: _tableBorderRadius(table.shape),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: const [
+                            Color(0xFFE3AD70),
+                            Color(0xFFA55D35),
+                            Color(0xFF71351F),
+                          ],
+                          stops: const [0, 0.56, 1],
+                        ),
+                        border: Border.all(
+                          color: statusStyle.color,
+                          width: 2.5,
+                        ),
+                        borderRadius: _tableBorderRadius(table.shape),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _espresso.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
                         ],
+                      ),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Padding(
+                            padding: EdgeInsets.all(contentPadding),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  table.code,
+                                  style: GoogleFonts.poppins(
+                                    color: _espresso,
+                                    fontSize: codeFontSize,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1,
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: math.max(0.25, nameFontSize * 0.12),
+                                ),
+                                Text(
+                                  table.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    color: _espresso.withValues(alpha: 0.9),
+                                    fontSize: nameFontSize,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: math.max(
+                                    0.25,
+                                    capacityFontSize * 0.12,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_rounded,
+                                      color: _espresso.withValues(alpha: 0.78),
+                                      size: iconSize,
+                                    ),
+                                    Text(
+                                      '${table.capacity}',
+                                      style: GoogleFonts.poppins(
+                                        color: _espresso.withValues(
+                                          alpha: 0.86,
+                                        ),
+                                        fontSize: capacityFontSize,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildTableChairs(
+    int capacity,
+    double tableWidth,
+    double tableHeight,
+    double chairSize,
+  ) {
+    final seatCount = capacity.clamp(1, 20).toInt();
+    return List.generate(seatCount, (index) {
+      final angle = (math.pi * 2 * index) / seatCount - math.pi / 2;
+      final x = tableWidth / 2 + math.cos(angle) * tableWidth * 0.76;
+      final y = tableHeight / 2 + math.sin(angle) * tableHeight * 0.84;
+      return Positioned(
+        left: x - chairSize / 2,
+        top: y - chairSize * 0.66,
+        child: Transform.rotate(
+          angle: angle + math.pi / 2,
+          child: SizedBox(
+            width: chairSize,
+            height: chairSize * 1.32,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: chairSize * 0.04,
+                  top: 0,
+                  child: Container(
+                    width: chairSize * 0.92,
+                    height: chairSize * 0.5,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFE5AC71), Color(0xFF8D4729)],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFF62341F),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(chairSize * 0.2),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: chairSize * 0.1,
+                  top: chairSize * 0.46,
+                  child: Container(
+                    width: chairSize * 0.8,
+                    height: chairSize * 0.38,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFF2C58D), Color(0xFFB5683D)],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFF62341F),
+                        width: 1,
+                      ),
+                      borderRadius: BorderRadius.circular(chairSize * 0.12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _espresso.withValues(alpha: 0.2),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: chairSize * 0.2,
+                  top: chairSize * 0.82,
+                  child: SizedBox(
+                    width: chairSize * 0.6,
+                    height: chairSize * 0.36,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(
+                        2,
+                        (_) => Container(
+                          width: chairSize * 0.1,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF62341F),
+                            borderRadius: BorderRadius.circular(
+                              chairSize * 0.05,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildLegend() {

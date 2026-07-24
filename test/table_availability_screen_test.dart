@@ -24,13 +24,13 @@ void main() {
     expect(firstTable, findsOneWidget);
     expect(
       tester.widget<Semantics>(firstTable).properties.label,
-      'M01, 2 kursi, Tersedia',
+      'M01, Meja 1, 2 kursi, Tersedia',
     );
 
     await tester.tap(firstTable);
     await tester.pumpAndSettle();
 
-    expect(find.text('Meja 1'), findsOneWidget);
+    expect(find.text('Meja 1'), findsAtLeastNWidgets(1));
     expect(find.text('Kode M01'), findsOneWidget);
     expect(find.text('2 kursi'), findsOneWidget);
   });
