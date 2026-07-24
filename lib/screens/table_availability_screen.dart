@@ -460,11 +460,24 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
 
   Widget _buildFloorCanvas(TableLayoutData data, double width, double height) {
     final children = <Widget>[
-      CustomPaint(
-        painter: data.layout.showGrid ? const _FloorGridPainter() : null,
-        child: const ColoredBox(
-          color: Color(0xFFFFFCF8),
-          child: SizedBox.expand(),
+      Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F1E8),
+            border: Border.all(color: const Color(0xFFE1D6CF)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: CustomPaint(
+              foregroundPainter: data.layout.showGrid
+                  ? const _FloorGridPainter()
+                  : null,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(color: Color(0x80FFFFFF)),
+                child: SizedBox.expand(),
+              ),
+            ),
+          ),
         ),
       ),
     ];
@@ -486,6 +499,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     double height,
   ) {
     final style = _backgroundStyleFor(element.type);
+    final isWindow = element.type == 'window';
     return Positioned(
       left: element.positionX / 100 * width,
       top: element.positionY / 100 * height,
@@ -493,22 +507,48 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         translation: const Offset(-0.5, -0.5),
         child: Container(
           constraints: BoxConstraints(
-            minWidth: style.minWidth,
-            minHeight: style.minHeight,
+            minWidth: isWindow ? 22 : style.minWidth,
+            minHeight: isWindow ? 72 : style.minHeight,
           ),
-          padding: style.padding,
+          padding: isWindow
+              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 6)
+              : style.padding,
           decoration: BoxDecoration(
             color: style.background,
             border: Border.all(color: style.border),
             borderRadius: BorderRadius.circular(8),
+            boxShadow: element.type == 'counter'
+                ? [
+                    BoxShadow(
+                      color: _espresso.withValues(alpha: 0.18),
+                      blurRadius: 7,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
-          child: Text(
-            element.label,
-            style: GoogleFonts.poppins(
-              color: style.foreground,
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Center(
+            child: isWindow
+                ? RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      element.label,
+                      style: GoogleFonts.poppins(
+                        color: style.foreground,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : Text(
+                    element.label,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      color: style.foreground,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ),
       ),
@@ -521,16 +561,17 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     double height,
   ) {
     final statusStyle = _statusStyleFor(table.status);
+    final tableRadius = _tableBorderRadius(table.shape);
     final tableWidth = table.width / 100 * width;
     final tableHeight = table.height / 100 * height;
     final smallestTableSide = math.min(tableWidth, tableHeight);
-    final codeFontSize = math.max(3.5, math.min(9.0, smallestTableSide * 0.24));
-    final nameFontSize = math.max(2.8, math.min(6.5, smallestTableSide * 0.16));
+    final codeFontSize = math.max(3.0, math.min(7.2, smallestTableSide * 0.19));
+    final nameFontSize = math.max(2.4, math.min(5.0, smallestTableSide * 0.13));
     final capacityFontSize = math.max(
-      2.8,
-      math.min(7.0, smallestTableSide * 0.17),
+      2.3,
+      math.min(5.3, smallestTableSide * 0.14),
     );
-    final iconSize = math.max(3.5, math.min(8.0, smallestTableSide * 0.18));
+    final iconSize = math.max(3.0, math.min(6.0, smallestTableSide * 0.15));
     final contentPadding = math.max(
       0.5,
       math.min(3.0, smallestTableSide * 0.08),
@@ -563,29 +604,26 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => _showTableDetail(table),
-                    borderRadius: _tableBorderRadius(table.shape),
+                    borderRadius: tableRadius,
                     child: Ink(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: const [
-                            Color(0xFFE3AD70),
+                            Color(0xFFC88955),
                             Color(0xFFA55D35),
-                            Color(0xFF71351F),
+                            Color(0xFF774027),
                           ],
                           stops: const [0, 0.56, 1],
                         ),
-                        border: Border.all(
-                          color: statusStyle.color,
-                          width: 2.5,
-                        ),
-                        borderRadius: _tableBorderRadius(table.shape),
+                        border: Border.all(color: statusStyle.color, width: 3),
+                        borderRadius: tableRadius,
                         boxShadow: [
                           BoxShadow(
-                            color: _espresso.withValues(alpha: 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
+                            color: _espresso.withValues(alpha: 0.22),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -600,9 +638,9 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                                 Text(
                                   table.code,
                                   style: GoogleFonts.poppins(
-                                    color: _espresso,
+                                    color: Colors.white,
                                     fontSize: codeFontSize,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                     height: 1,
                                   ),
                                 ),
@@ -614,9 +652,9 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.poppins(
-                                    color: _espresso.withValues(alpha: 0.9),
+                                    color: Colors.white.withValues(alpha: 0.92),
                                     fontSize: nameFontSize,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                     height: 1,
                                   ),
                                 ),
@@ -631,17 +669,19 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                                   children: [
                                     Icon(
                                       Icons.person_rounded,
-                                      color: _espresso.withValues(alpha: 0.78),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
                                       size: iconSize,
                                     ),
                                     Text(
                                       '${table.capacity}',
                                       style: GoogleFonts.poppins(
-                                        color: _espresso.withValues(
-                                          alpha: 0.86,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
                                         ),
                                         fontSize: capacityFontSize,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                         height: 1,
                                       ),
                                     ),
@@ -695,10 +735,10 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFFE5AC71), Color(0xFF8D4729)],
+                        colors: [Color(0xFFE7AD71), Color(0xFF8F4B2C)],
                       ),
                       border: Border.all(
-                        color: const Color(0xFF62341F),
+                        color: const Color(0xFF64371F),
                         width: 1,
                       ),
                       borderRadius: BorderRadius.circular(chairSize * 0.2),
@@ -715,10 +755,10 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFFF2C58D), Color(0xFFB5683D)],
+                        colors: [Color(0xFFF0C288), Color(0xFFAE6439)],
                       ),
                       border: Border.all(
-                        color: const Color(0xFF62341F),
+                        color: const Color(0xFF64371F),
                         width: 1,
                       ),
                       borderRadius: BorderRadius.circular(chairSize * 0.12),
@@ -745,7 +785,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                         (_) => Container(
                           width: chairSize * 0.1,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF62341F),
+                            color: const Color(0xFF64371F),
                             borderRadius: BorderRadius.circular(
                               chairSize * 0.05,
                             ),

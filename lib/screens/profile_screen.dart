@@ -425,10 +425,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5E6D3),
+      backgroundColor: const Color(0xFFFAF7F3),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4A3022)),
+              child: CircularProgressIndicator(color: Color(0xFF5D3A1A)),
             )
           : _user == null
           ? Center(
@@ -460,94 +460,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           : CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               slivers: [
-                // Profile Header
-                SliverToBoxAdapter(
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF4A3022),
-                          const Color(0xFF4A3022).withValues(alpha: 0.9),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(32),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Avatar
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.4),
-                              width: 2,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 44,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.15,
-                            ),
-                            child: Text(
-                              _user!.name.isNotEmpty
-                                  ? _user!.name[0].toUpperCase()
-                                  : '?',
-                              style: GoogleFonts.inter(
-                                fontSize: 36,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _user!.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _user!.email,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _user!.role.toUpperCase(),
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                SliverToBoxAdapter(child: _buildProfileHero(lang)),
 
                 // Menu Options
                 SliverToBoxAdapter(
@@ -560,12 +477,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           lang.tr('AKUN'),
                           style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                            color: const Color(
-                              0xFF4A3022,
-                            ).withValues(alpha: 0.4),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: const Color(0xFF8B7355),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -589,12 +504,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           lang.tr('PREFERENSI'),
                           style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                            color: const Color(
-                              0xFF4A3022,
-                            ).withValues(alpha: 0.4),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: const Color(0xFF8B7355),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -623,12 +536,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           lang.tr('LAINNYA'),
                           style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                            color: const Color(
-                              0xFF4A3022,
-                            ).withValues(alpha: 0.4),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: const Color(0xFF8B7355),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -665,12 +576,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.red.shade600,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: const Color(0xFFFFF4F1),
+                              foregroundColor: const Color(0xFFD75A4A),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(color: Colors.red.shade200),
+                                borderRadius: BorderRadius.circular(16),
+                                side: const BorderSide(
+                                  color: Color(0xFFF1CBC5),
+                                ),
                               ),
                               elevation: 0,
                             ),
@@ -686,16 +599,200 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildProfileHero(LanguageProvider lang) {
+    final user = _user!;
+
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF5D3A1A), Color(0xFF8B6B4A), Color(0xFFD4A574)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF5D3A1A).withValues(alpha: 0.25),
+                blurRadius: 22,
+                offset: const Offset(0, 9),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -26,
+                top: -34,
+                child: Container(
+                  width: 126,
+                  height: 126,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.07),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 52,
+                bottom: -48,
+                child: Container(
+                  width: 104,
+                  height: 104,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        lang.tr('Profil'),
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.coffee_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.18),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: const Color(0xFFFFF8F0),
+                          child: Text(
+                            user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : '?',
+                            style: GoogleFonts.inter(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF5D3A1A),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              user.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.verified_rounded,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    user.role.toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.9,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFECDDD1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: const Color(0xFF5D3A1A).withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -708,8 +805,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!isLast)
                 Divider(
                   height: 1,
-                  indent: 56,
-                  color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
+                  indent: 70,
+                  endIndent: 16,
+                  color: const Color(0xFFECDDD1),
                 ),
             ],
           );
@@ -726,20 +824,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5E6D3),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFFFFF3E8),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFF0DFD0)),
               ),
-              child: Icon(icon, color: const Color(0xFF4A3022), size: 20),
+              child: Icon(icon, color: const Color(0xFF5D3A1A), size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -747,26 +848,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     label,
                     style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF4A3022),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2C1810),
                     ),
                   ),
                   if (subtitle != null)
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                        fontSize: 10.5,
+                        color: const Color(0xFF8B7355),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: const Color(0xFF4A3022).withValues(alpha: 0.3),
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F3ED),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: Color(0xFF8B7355),
+              ),
             ),
           ],
         ),
@@ -782,18 +894,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required ValueChanged<bool> onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5E6D3),
-              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFFFFF3E8),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFF0DFD0)),
             ),
-            child: Icon(icon, color: const Color(0xFF4A3022), size: 20),
+            child: Icon(icon, color: const Color(0xFF5D3A1A), size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -801,16 +916,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   label,
                   style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4A3022),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF2C1810),
                   ),
                 ),
                 Text(
                   subtitle,
                   style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                    fontSize: 10.5,
+                    color: const Color(0xFF8B7355),
                   ),
                 ),
               ],
@@ -819,8 +934,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF4A3022),
-            activeTrackColor: const Color(0xFFD2B48C),
+            activeThumbColor: const Color(0xFF5D3A1A),
+            activeTrackColor: const Color(0xFFD4A574),
           ),
         ],
       ),

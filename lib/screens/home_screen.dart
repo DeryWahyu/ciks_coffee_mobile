@@ -1033,29 +1033,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               : SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.64,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                        ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final product = _products[index];
-                      final imageUrl = _apiService.getImageUrl(
-                        product['image_url'] ?? '',
-                      );
-                      final isAvailable =
-                          (product['is_available'] ?? true) == true;
-
-                      return _buildProductCard(
-                        product,
-                        imageUrl,
-                        isAvailable,
-                        lang,
-                      );
-                    }, childCount: _products.length),
+                  sliver: SliverToBoxAdapter(
+                    child: _buildProductMasonryGrid(lang),
                   ),
                 ),
 
@@ -1065,12 +1044,50 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildProductMasonryGrid(LanguageProvider lang) {
+    final leftColumn = <Widget>[];
+    final rightColumn = <Widget>[];
+
+    for (var index = 0; index < _products.length; index++) {
+      final product = Map<String, dynamic>.from(_products[index] as Map);
+      final imageUrl = _apiService.getImageUrl(product['image_url'] ?? '');
+      final isAvailable = (product['is_available'] ?? true) == true;
+      final column = index.isEven ? leftColumn : rightColumn;
+
+      column.add(_buildProductCard(product, imageUrl, isAvailable, lang));
+      if (index + 2 < _products.length) {
+        column.add(const SizedBox(height: 14));
+      }
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: leftColumn,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: rightColumn,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProductCard(
     Map<String, dynamic> product,
     String imageUrl,
     bool isAvailable,
     LanguageProvider lang,
   ) {
+    final description = product['description']?.toString().trim() ?? '';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1092,8 +1109,8 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image section
-          Expanded(
-            flex: 5,
+          AspectRatio(
+            aspectRatio: 1.24,
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
@@ -1187,87 +1204,98 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           // Info section
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    product['name'],
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: const Color(0xFF2C1810),
-                      height: 1.3,
-                      letterSpacing: -0.2,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product['name'],
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: const Color(0xFF2C1810),
+                    height: 1.3,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description.isNotEmpty
+                      ? description
+                      : 'Deskripsi produk belum tersedia.',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 9.5,
+                    color: const Color(0xFF8B7355),
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _formatPrice(product['price']),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: const Color(0xFF5D3A1A),
+                          letterSpacing: -0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _formatPrice(product['price']),
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: const Color(0xFF5D3A1A),
-                            letterSpacing: -0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: isAvailable
+                          ? () => _handleAddToCart(product)
+                          : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          gradient: isAvailable
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF2C1810),
+                                    Color(0xFF5D3A1A),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: isAvailable ? null : const Color(0xFFCCC5BC),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: isAvailable
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF2C1810,
+                                    ).withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 17,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: isAvailable
-                            ? () => _handleAddToCart(product)
-                            : null,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            gradient: isAvailable
-                                ? const LinearGradient(
-                                    colors: [
-                                      Color(0xFF2C1810),
-                                      Color(0xFF5D3A1A),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: isAvailable ? null : const Color(0xFFCCC5BC),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: isAvailable
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF2C1810,
-                                      ).withValues(alpha: 0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: const Icon(
-                            Icons.add_rounded,
-                            color: Colors.white,
-                            size: 17,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

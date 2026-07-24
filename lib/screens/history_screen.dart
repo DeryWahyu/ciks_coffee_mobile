@@ -65,7 +65,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   String _formatPrice(double price) {
-    final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final formatCurrency = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
     return formatCurrency.format(price);
   }
 
@@ -76,11 +80,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final diff = now.difference(date);
 
       if (diff.inMinutes < 60) {
-        return lang.isEnglish ? '${diff.inMinutes} mins ago' : '${diff.inMinutes} menit lalu';
+        return lang.isEnglish
+            ? '${diff.inMinutes} mins ago'
+            : '${diff.inMinutes} menit lalu';
       } else if (diff.inHours < 24) {
-        return lang.isEnglish ? '${diff.inHours} hours ago' : '${diff.inHours} jam lalu';
+        return lang.isEnglish
+            ? '${diff.inHours} hours ago'
+            : '${diff.inHours} jam lalu';
       } else if (diff.inDays < 7) {
-        return lang.isEnglish ? '${diff.inDays} days ago' : '${diff.inDays} hari lalu';
+        return lang.isEnglish
+            ? '${diff.inDays} days ago'
+            : '${diff.inDays} hari lalu';
       } else {
         return DateFormat('dd MMM yyyy').format(date);
       }
@@ -92,7 +102,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String _formatFullDate(String dateStr, LanguageProvider lang) {
     try {
       final date = DateTime.parse(dateStr);
-      return DateFormat(lang.isEnglish ? 'EEEE, MMMM dd yyyy • HH:mm' : 'EEEE, dd MMMM yyyy • HH:mm', lang.isEnglish ? 'en_US' : 'id_ID').format(date);
+      return DateFormat(
+        lang.isEnglish
+            ? 'EEEE, MMMM dd yyyy • HH:mm'
+            : 'EEEE, dd MMMM yyyy • HH:mm',
+        lang.isEnglish ? 'en_US' : 'id_ID',
+      ).format(date);
     } catch (_) {
       return dateStr;
     }
@@ -103,86 +118,111 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5E6D3),
+      backgroundColor: const Color(0xFFFAF7F3),
       appBar: AppBar(
-        title: Text(lang.isEnglish ? 'Order History' : 'Riwayat Pesanan', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022))),
-        backgroundColor: const Color(0xFFF5E6D3),
-        foregroundColor: const Color(0xFF4A3022),
+        title: Text(
+          lang.isEnglish ? 'Order History' : 'Riwayat Pesanan',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: const Color(0xFF2C1810),
+          ),
+        ),
+        backgroundColor: const Color(0xFFFAF7F3),
+        foregroundColor: const Color(0xFF2C1810),
+        toolbarHeight: 68,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A3022)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF4A3022)),
+            )
           : _errorMessage != null
-              ? _buildErrorState(lang)
-              : _orders.isEmpty
-                  ? _buildEmptyState(lang)
-                  : RefreshIndicator(
-                      onRefresh: _fetchHistory,
-                      color: const Color(0xFF4A3022),
-                      child: Column(
-                        children: [
-                          // Summary header
-                          Container(
-                            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFF4A3022),
-                                  const Color(0xFF4A3022).withValues(alpha: 0.85),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.receipt_long, color: Colors.white, size: 22),
-                                ),
-                                const SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${_orders.length} ${lang.isEnglish ? 'Orders' : 'Pesanan'}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Total: ${_formatPrice(_orders.fold(0.0, (sum, o) => sum + o.total))}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: Colors.white.withValues(alpha: 0.7),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Order list
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                              itemCount: _orders.length,
-                              itemBuilder: (context, index) => _buildHistoryCard(_orders[index], lang),
-                            ),
-                          ),
+          ? _buildErrorState(lang)
+          : _orders.isEmpty
+          ? _buildEmptyState(lang)
+          : RefreshIndicator(
+              onRefresh: _fetchHistory,
+              color: const Color(0xFF5D3A1A),
+              child: Column(
+                children: [
+                  // Summary header
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF5D3A1A),
+                          Color(0xFF8B6B4A),
+                          Color(0xFFD4A574),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF5D3A1A,
+                          ).withValues(alpha: 0.24),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.receipt_long,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_orders.length} ${lang.isEnglish ? 'Orders' : 'Pesanan'}',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Total: ${_formatPrice(_orders.fold(0.0, (sum, o) => sum + o.total))}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Order list
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                      itemCount: _orders.length,
+                      itemBuilder: (context, index) =>
+                          _buildHistoryCard(_orders[index], lang),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -197,7 +237,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               color: const Color(0xFFD2B48C).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.receipt_long_outlined, size: 56, color: const Color(0xFFD2B48C).withValues(alpha: 0.7)),
+            child: Icon(
+              Icons.receipt_long_outlined,
+              size: 56,
+              color: const Color(0xFFD2B48C).withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -210,7 +254,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            lang.isEnglish ? 'Orders that have been picked up\nwill appear here.' : 'Pesanan yang sudah diambil\nakan muncul di sini.',
+            lang.isEnglish
+                ? 'Orders that have been picked up\nwill appear here.'
+                : 'Pesanan yang sudah diambil\nakan muncul di sini.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: const Color(0xFF4A3022).withValues(alpha: 0.5),
@@ -221,11 +267,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           OutlinedButton.icon(
             onPressed: _fetchHistory,
             icon: const Icon(Icons.refresh, size: 18),
-            label: Text('Refresh', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            label: Text(
+              'Refresh',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF4A3022),
               side: const BorderSide(color: Color(0xFF4A3022)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
@@ -242,7 +293,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Icon(Icons.error_outline, size: 56, color: Colors.red.shade300),
           const SizedBox(height: 16),
           Text(
-            _errorMessage ?? (lang.isEnglish ? 'An error occurred' : 'Terjadi kesalahan'),
+            _errorMessage ??
+                (lang.isEnglish ? 'An error occurred' : 'Terjadi kesalahan'),
             style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
             textAlign: TextAlign.center,
           ),
@@ -250,11 +302,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ElevatedButton.icon(
             onPressed: _fetchHistory,
             icon: const Icon(Icons.refresh, size: 18),
-            label: Text(lang.isEnglish ? 'Try Again' : 'Coba Lagi', style: GoogleFonts.inter()),
+            label: Text(
+              lang.isEnglish ? 'Try Again' : 'Coba Lagi',
+              style: GoogleFonts.inter(),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4A3022),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -266,16 +323,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return GestureDetector(
       onTap: () => _showDetailSheet(order, lang),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFECDDD1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: const Color(0xFF5D3A1A).withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -284,10 +342,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFE9F7ED),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 22),
+              child: const Icon(
+                Icons.check_circle,
+                color: Color(0xFF4CAF50),
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -299,34 +361,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: const Color(0xFF4A3022),
+                      color: const Color(0xFF2C1810),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 12, color: const Color(0xFF4A3022).withValues(alpha: 0.4)),
+                      const Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: Color(0xFF8B7355),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _formatDate(order.createdAt, lang),
                         style: GoogleFonts.inter(
                           fontSize: 11,
-                          color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                          color: const Color(0xFF8B7355),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF5E6D3),
-                          borderRadius: BorderRadius.circular(4),
+                          color: const Color(0xFFFFF3E8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '${order.items.length} item',
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                            color: const Color(0xFF5D3A1A),
                           ),
                         ),
                       ),
@@ -342,11 +411,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   _formatPrice(order.total),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF4A3022),
+                    color: const Color(0xFF5D3A1A),
                   ),
                 ),
                 const SizedBox(height: 2),
-                Icon(Icons.chevron_right, size: 18, color: const Color(0xFF4A3022).withValues(alpha: 0.3)),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: const Color(0xFF4A3022).withValues(alpha: 0.3),
+                ),
               ],
             ),
           ],
@@ -404,13 +477,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           order.orderNumber,
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                            color: const Color(
+                              0xFF4A3022,
+                            ).withValues(alpha: 0.5),
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -418,7 +496,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle, size: 14, color: Color(0xFF4CAF50)),
+                          const Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: Color(0xFF4CAF50),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             lang.isEnglish ? 'Done' : 'Selesai',
@@ -440,7 +522,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 14, color: const Color(0xFF4A3022).withValues(alpha: 0.4)),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: const Color(0xFF4A3022).withValues(alpha: 0.4),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       _formatFullDate(order.createdAt, lang),
@@ -453,46 +539,63 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Divider(height: 1, color: const Color(0xFFD2B48C).withValues(alpha: 0.2)),
+              Divider(
+                height: 1,
+                color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
+              ),
               // Items list
               Flexible(
                 child: ListView(
                   padding: const EdgeInsets.all(20),
                   shrinkWrap: true,
                   children: [
-                    ...order.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5E6D3),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${item.quantity}x',
-                                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF4A3022)),
+                    ...order.items.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5E6D3),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${item.quantity}x',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF4A3022),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item.productName,
-                              style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4A3022)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                item.productName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: const Color(0xFF4A3022),
+                                ),
+                              ),
                             ),
-                          ),
-                          Text(
-                            _formatPrice(item.subtotal),
-                            style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4A3022)),
-                          ),
-                        ],
+                            Text(
+                              _formatPrice(item.subtotal),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: const Color(0xFF4A3022),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    )),
-                    Divider(color: const Color(0xFFD2B48C).withValues(alpha: 0.2)),
+                    ),
+                    Divider(
+                      color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
+                    ),
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Row(
@@ -500,11 +603,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         children: [
                           Text(
                             'Total',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF4A3022)),
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: const Color(0xFF4A3022),
+                            ),
                           ),
                           Text(
                             _formatPrice(order.total),
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF4A3022)),
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: const Color(0xFF4A3022),
+                            ),
                           ),
                         ],
                       ),
@@ -519,13 +630,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.payment, size: 18, color: const Color(0xFF4A3022).withValues(alpha: 0.5)),
+                          Icon(
+                            Icons.payment,
+                            size: 18,
+                            color: const Color(
+                              0xFF4A3022,
+                            ).withValues(alpha: 0.5),
+                          ),
                           const SizedBox(width: 8),
                           Text(
-                            lang.isEnglish ? 'Payment Method' : 'Metode Pembayaran',
+                            lang.isEnglish
+                                ? 'Payment Method'
+                                : 'Metode Pembayaran',
                             style: GoogleFonts.inter(
                               fontSize: 12,
-                              color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                              color: const Color(
+                                0xFF4A3022,
+                              ).withValues(alpha: 0.5),
                             ),
                           ),
                           const Spacer(),

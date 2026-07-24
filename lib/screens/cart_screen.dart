@@ -21,7 +21,11 @@ class _CartScreenState extends State<CartScreen> {
   String _selectedPayment = 'qris';
 
   String _formatPrice(double price) {
-    final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final formatCurrency = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
     return formatCurrency.format(price);
   }
 
@@ -38,7 +42,11 @@ class _CartScreenState extends State<CartScreen> {
     _processCheckout(cart, null, lang);
   }
 
-  void _processCheckout(CartProvider cart, String? paymentProofPath, LanguageProvider lang) async {
+  void _processCheckout(
+    CartProvider cart,
+    String? paymentProofPath,
+    LanguageProvider lang,
+  ) async {
     setState(() => _isCheckingOut = true);
 
     final result = await _apiService.checkout(
@@ -125,7 +133,11 @@ class _CartScreenState extends State<CartScreen> {
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 40),
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFD2B48C).withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFD2B48C,
+                            ).withValues(alpha: 0.5),
+                          ),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: ClipRRect(
@@ -139,7 +151,11 @@ class _CartScreenState extends State<CartScreen> {
                               height: 200,
                               color: const Color(0xFFF5E6D3),
                               child: const Center(
-                                child: Icon(Icons.broken_image, size: 48, color: Color(0xFFD2B48C)),
+                                child: Icon(
+                                  Icons.broken_image,
+                                  size: 48,
+                                  color: Color(0xFFD2B48C),
+                                ),
                               ),
                             ),
                           ),
@@ -155,13 +171,20 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.qr_code_2, size: 64, color: Color(0xFFD2B48C)),
+                            const Icon(
+                              Icons.qr_code_2,
+                              size: 64,
+                              color: Color(0xFFD2B48C),
+                            ),
                             const SizedBox(height: 8),
                             Text(
-                              qrisResult['message'] ?? lang.tr('QRIS belum tersedia'),
+                              qrisResult['message'] ??
+                                  lang.tr('QRIS belum tersedia'),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
-                                color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                                color: const Color(
+                                  0xFF4A3022,
+                                ).withValues(alpha: 0.6),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -178,19 +201,27 @@ class _CartScreenState extends State<CartScreen> {
                           // Divider with label
                           Row(
                             children: [
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                              Expanded(
+                                child: Divider(color: Colors.grey.shade300),
+                              ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 child: Text(
                                   lang.tr('Upload Bukti Transfer'),
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF4A3022).withValues(alpha: 0.7),
+                                    color: const Color(
+                                      0xFF4A3022,
+                                    ).withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
+                              Expanded(
+                                child: Divider(color: Colors.grey.shade300),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -213,7 +244,9 @@ class _CartScreenState extends State<CartScreen> {
                               },
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 24,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: const Color(0xFFD2B48C),
@@ -221,21 +254,29 @@ class _CartScreenState extends State<CartScreen> {
                                     width: 1.5,
                                   ),
                                   borderRadius: BorderRadius.circular(16),
-                                  color: const Color(0xFFF5E6D3).withValues(alpha: 0.5),
+                                  color: const Color(
+                                    0xFFF5E6D3,
+                                  ).withValues(alpha: 0.5),
                                 ),
                                 child: Column(
                                   children: [
                                     Icon(
                                       Icons.cloud_upload_outlined,
                                       size: 36,
-                                      color: const Color(0xFF4A3022).withValues(alpha: 0.5),
+                                      color: const Color(
+                                        0xFF4A3022,
+                                      ).withValues(alpha: 0.5),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      lang.tr('Ketuk untuk pilih screenshot bukti transfer'),
+                                      lang.tr(
+                                        'Ketuk untuk pilih screenshot bukti transfer',
+                                      ),
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
-                                        color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                                        color: const Color(
+                                          0xFF4A3022,
+                                        ).withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
@@ -258,14 +299,19 @@ class _CartScreenState extends State<CartScreen> {
                                   top: 8,
                                   right: 8,
                                   child: GestureDetector(
-                                    onTap: () => setModalState(() => proofFile = null),
+                                    onTap: () =>
+                                        setModalState(() => proofFile = null),
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: const BoxDecoration(
                                         color: Colors.black54,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -273,7 +319,10 @@ class _CartScreenState extends State<CartScreen> {
                                   bottom: 8,
                                   left: 8,
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.green.shade600,
                                       borderRadius: BorderRadius.circular(8),
@@ -281,7 +330,11 @@ class _CartScreenState extends State<CartScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           lang.tr('Bukti terpilih'),
@@ -318,14 +371,18 @@ class _CartScreenState extends State<CartScreen> {
                             backgroundColor: const Color(0xFF4A3022),
                             disabledBackgroundColor: Colors.grey.shade300,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                           child: Text(
                             proofFile == null
                                 ? lang.tr('Upload bukti terlebih dahulu')
                                 : lang.tr('Kirim Pesanan & Bukti Transfer'),
                             style: GoogleFonts.inter(
-                              color: proofFile == null ? Colors.grey.shade500 : Colors.white,
+                              color: proofFile == null
+                                  ? Colors.grey.shade500
+                                  : Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -369,7 +426,11 @@ class _CartScreenState extends State<CartScreen> {
                   color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 48),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF4CAF50),
+                  size: 48,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -405,11 +466,16 @@ class _CartScreenState extends State<CartScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A3022),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(
                     'OK',
-                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -425,11 +491,19 @@ class _CartScreenState extends State<CartScreen> {
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5E6D3),
+      backgroundColor: const Color(0xFFFAF7F3),
       appBar: AppBar(
-        title: Text(lang.tr('Keranjang'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF4A3022))),
-        backgroundColor: const Color(0xFFF5E6D3),
-        foregroundColor: const Color(0xFF4A3022),
+        title: Text(
+          lang.tr('Keranjang'),
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: const Color(0xFF2C1810),
+          ),
+        ),
+        backgroundColor: const Color(0xFFFAF7F3),
+        foregroundColor: const Color(0xFF2C1810),
+        toolbarHeight: 68,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
@@ -441,7 +515,11 @@ class _CartScreenState extends State<CartScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: const Color(0xFFD2B48C).withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 80,
+                    color: const Color(0xFFD2B48C).withValues(alpha: 0.6),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     lang.tr('Keranjang Kosong'),
@@ -468,23 +546,28 @@ class _CartScreenState extends State<CartScreen> {
               // Cart Items List
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                   itemCount: cart.itemsList.length,
                   itemBuilder: (context, index) {
                     final item = cart.itemsList[index];
-                    final imageUrl = _apiService.getImageUrl(item.product.imageUrl ?? '');
+                    final imageUrl = _apiService.getImageUrl(
+                      item.product.imageUrl ?? '',
+                    );
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.only(bottom: 14),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFECDDD1)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            color: const Color(
+                              0xFF5D3A1A,
+                            ).withValues(alpha: 0.07),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
@@ -492,10 +575,16 @@ class _CartScreenState extends State<CartScreen> {
                         children: [
                           // Product Image
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(15),
                             child: imageUrl.isNotEmpty
-                                ? Image.network(imageUrl, width: 64, height: 64, fit: BoxFit.cover,
-                                    errorBuilder: (c, e, s) => _imagePlaceholder())
+                                ? Image.network(
+                                    imageUrl,
+                                    width: 68,
+                                    height: 68,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (c, e, s) =>
+                                        _imagePlaceholder(),
+                                  )
                                 : _imagePlaceholder(),
                           ),
                           const SizedBox(width: 12),
@@ -507,9 +596,9 @@ class _CartScreenState extends State<CartScreen> {
                                 Text(
                                   item.displayName,
                                   style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 14,
-                                    color: const Color(0xFF4A3022),
+                                    color: const Color(0xFF2C1810),
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -520,7 +609,7 @@ class _CartScreenState extends State<CartScreen> {
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF4A3022).withValues(alpha: 0.8),
+                                    color: const Color(0xFF5D3A1A),
                                   ),
                                 ),
                               ],
@@ -529,8 +618,11 @@ class _CartScreenState extends State<CartScreen> {
                           // Quantity Controls
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF5E6D3),
-                              borderRadius: BorderRadius.circular(12),
+                              color: const Color(0xFFFFF4EA),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFF0DFD0),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -539,19 +631,24 @@ class _CartScreenState extends State<CartScreen> {
                                   onTap: () => cart.removeItem(item.uniqueKey),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
                                   child: Text(
                                     '${item.quantity}',
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
-                                      color: const Color(0xFF4A3022),
+                                      color: const Color(0xFF2C1810),
                                     ),
                                   ),
                                 ),
                                 _quantityButton(
                                   icon: Icons.add,
-                                  onTap: () => cart.addItem(item.product, variant: item.variant),
+                                  onTap: () => cart.addItem(
+                                    item.product,
+                                    variant: item.variant,
+                                  ),
                                 ),
                               ],
                             ),
@@ -568,12 +665,17 @@ class _CartScreenState extends State<CartScreen> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                  border: const Border(
+                    top: BorderSide(color: Color(0xFFECDDD1)),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, -4),
+                      color: const Color(0xFF5D3A1A).withValues(alpha: 0.10),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
                     ),
                   ],
                 ),
@@ -589,7 +691,7 @@ class _CartScreenState extends State<CartScreen> {
                             lang.tr('Pembayaran:'),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF4A3022),
+                              color: const Color(0xFF2C1810),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -608,7 +710,7 @@ class _CartScreenState extends State<CartScreen> {
                                 lang.tr('Total'),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: const Color(0xFF4A3022).withValues(alpha: 0.6),
+                                  color: const Color(0xFF8B7355),
                                 ),
                               ),
                               Text(
@@ -616,7 +718,7 @@ class _CartScreenState extends State<CartScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF4A3022),
+                                  color: const Color(0xFF2C1810),
                                 ),
                               ),
                             ],
@@ -624,18 +726,35 @@ class _CartScreenState extends State<CartScreen> {
                           ElevatedButton(
                             onPressed: _isCheckingOut ? null : _checkout,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4A3022),
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              backgroundColor: const Color(0xFF5D3A1A),
+                              elevation: 4,
+                              shadowColor: const Color(
+                                0xFF5D3A1A,
+                              ).withValues(alpha: 0.28),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 15,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
                             child: _isCheckingOut
                                 ? const SizedBox(
-                                    width: 20, height: 20,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : Row(
                                     children: [
-                                      const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
+                                      const Icon(
+                                        Icons.shopping_bag_outlined,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
                                       Text(
                                         lang.tr('Pesan Sekarang'),
@@ -662,20 +781,30 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _imagePlaceholder() {
     return Container(
-      width: 64,
-      height: 64,
-      color: const Color(0xFFF5E6D3),
-      child: const Icon(Icons.coffee, color: Color(0xFFD2B48C), size: 28),
+      width: 68,
+      height: 68,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E8),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: const Icon(
+        Icons.coffee_rounded,
+        color: Color(0xFFD4A574),
+        size: 28,
+      ),
     );
   }
 
-  Widget _quantityButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _quantityButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Icon(icon, size: 16, color: const Color(0xFF4A3022)),
+        child: Icon(icon, size: 16, color: const Color(0xFF5D3A1A)),
       ),
     );
   }
@@ -687,15 +816,20 @@ class _CartScreenState extends State<CartScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4A3022) : const Color(0xFFF5E6D3),
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? const Color(0xFF5D3A1A) : const Color(0xFFFFF4EA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF5D3A1A)
+                : const Color(0xFFF0DFD0),
+          ),
         ),
         child: Text(
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
             fontSize: 12,
-            color: isSelected ? Colors.white : const Color(0xFF4A3022),
+            color: isSelected ? Colors.white : const Color(0xFF5D3A1A),
           ),
         ),
       ),

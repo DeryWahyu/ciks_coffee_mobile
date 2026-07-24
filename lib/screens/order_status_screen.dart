@@ -269,17 +269,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5E6D3),
+      backgroundColor: const Color(0xFFFAF7F3),
       appBar: AppBar(
         title: Text(
           lang.isEnglish ? 'Order Status' : 'Status Pesanan',
           style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF4A3022),
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: const Color(0xFF2C1810),
           ),
         ),
-        backgroundColor: const Color(0xFFF5E6D3),
-        foregroundColor: const Color(0xFF4A3022),
+        backgroundColor: const Color(0xFFFAF7F3),
+        foregroundColor: const Color(0xFF2C1810),
+        toolbarHeight: 68,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
@@ -292,14 +294,107 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ? _buildEmptyState(lang)
           : RefreshIndicator(
               onRefresh: _fetchActiveOrders,
-              color: const Color(0xFF4A3022),
+              color: const Color(0xFF5D3A1A),
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _orders.length,
-                itemBuilder: (context, index) =>
-                    _buildOrderCard(_orders[index], lang),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                itemCount: _orders.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: _buildStatusHero(lang),
+                    );
+                  }
+
+                  return _buildOrderCard(_orders[index - 1], lang);
+                },
               ),
             ),
+    );
+  }
+
+  Widget _buildStatusHero(LanguageProvider lang) {
+    final orderLabel = lang.isEnglish
+        ? '${_orders.length} active ${_orders.length == 1 ? 'order' : 'orders'}'
+        : '${_orders.length} pesanan aktif';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF5D3A1A), Color(0xFF8B6B4A), Color(0xFFD4A574)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5D3A1A).withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -26,
+            top: -28,
+            child: Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.07),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lang.isEnglish ? 'Order tracker' : 'Lacak pesananmu',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      orderLabel,
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.local_cafe_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -367,23 +462,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     final isReady = order.status == 'selesai';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF5D3A1A).withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
-        border: isReady
-            ? Border.all(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
-                width: 1.5,
-              )
-            : null,
+        border: Border.all(
+          color: isReady
+              ? const Color(0xFF4CAF50).withValues(alpha: 0.48)
+              : const Color(0xFFECDDD1),
+          width: isReady ? 1.5 : 1,
+        ),
       ),
       child: Column(
         children: [
@@ -393,7 +488,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             decoration: BoxDecoration(
               color: _stageColor(order.status).withValues(alpha: 0.06),
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(22),
               ),
             ),
             child: Row(
