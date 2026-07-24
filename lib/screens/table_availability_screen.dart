@@ -99,7 +99,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         _errorMessage = null;
         _isLoading = false;
         _isRefreshing = false;
-        _lastRefreshedAt = DateTime.now();
+        _lastRefreshedAt = _jakartaNow();
       });
       return;
     }
@@ -1069,7 +1069,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                   DateFormat(
                     'dd MMM yyyy, HH:mm',
                     'id_ID',
-                  ).format(table.statusUpdatedAt!.toLocal()),
+                  ).format(_toJakartaTime(table.statusUpdatedAt!)),
                 ),
               ],
               const SizedBox(height: 22),
@@ -1123,6 +1123,12 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         return BorderRadius.circular(11);
     }
   }
+
+  DateTime _jakartaNow() =>
+      DateTime.now().toUtc().add(const Duration(hours: 7));
+
+  DateTime _toJakartaTime(DateTime value) =>
+      value.toUtc().add(const Duration(hours: 7));
 
   _TableStatusStyle _statusStyleFor(String status) {
     switch (status) {

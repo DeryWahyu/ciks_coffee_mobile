@@ -75,8 +75,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   String _formatDate(String dateStr, LanguageProvider lang) {
     try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
+      final date = _toJakartaTime(dateStr);
+      final now = _jakartaNow();
       final diff = now.difference(date);
 
       if (diff.inMinutes < 60) {
@@ -92,7 +92,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ? '${diff.inDays} days ago'
             : '${diff.inDays} hari lalu';
       } else {
-        return DateFormat('dd MMM yyyy').format(date);
+        return DateFormat(
+          'dd MMM yyyy',
+          lang.isEnglish ? 'en_US' : 'id_ID',
+        ).format(date);
       }
     } catch (_) {
       return dateStr;
@@ -101,7 +104,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   String _formatFullDate(String dateStr, LanguageProvider lang) {
     try {
-      final date = DateTime.parse(dateStr);
+      final date = _toJakartaTime(dateStr);
       return DateFormat(
         lang.isEnglish
             ? 'EEEE, MMMM dd yyyy • HH:mm'
@@ -112,6 +115,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return dateStr;
     }
   }
+
+  DateTime _jakartaNow() =>
+      DateTime.now().toUtc().add(const Duration(hours: 7));
+
+  DateTime _toJakartaTime(String value) =>
+      DateTime.parse(value).toUtc().add(const Duration(hours: 7));
 
   @override
   Widget build(BuildContext context) {

@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getGreeting(LanguageProvider lang) {
-    final hour = DateTime.now().hour;
+    final hour = DateTime.now().toUtc().add(const Duration(hours: 7)).hour;
     if (hour < 11) {
       return lang.tr('Selamat Pagi');
     } else if (hour < 15) {
@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   IconData _getGreetingIcon() {
-    final hour = DateTime.now().hour;
+    final hour = DateTime.now().toUtc().add(const Duration(hours: 7)).hour;
     if (hour < 11) {
       return Icons.wb_sunny_rounded;
     } else if (hour < 15) {
