@@ -1,11 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/table_layout_model.dart';
 import '../models/user_model.dart';
 
 class ApiService {
+  static const _secureStorage = FlutterSecureStorage();
+  static const _tokenKey = 'auth_token';
+  static const _tokenExpiryKey = 'auth_token_expires_at';
+
   String get baseUrl {
     return 'https://cikscoffee.my.id/api';
   }
@@ -16,7 +21,10 @@ class ApiService {
 
   String getImageUrl(String path) {
     if (path.isEmpty) return '';
-    if (path.startsWith('http')) return path;
+    final uri = Uri.tryParse(path);
+    if (uri != null && uri.hasScheme) {
+      return uri.scheme == 'https' ? path : '';
+    }
 
     // Replace 'storage/' prefix if present, as our API route takes the raw path
     if (path.startsWith('storage/')) {
@@ -41,7 +49,10 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        await saveToken(data['access_token']);
+        await saveToken(
+          data['access_token'],
+          expiresAt: data['expires_at'],
+        );
         return {'success': true, 'user': UserModel.fromJson(data['user'])};
       } else {
         try {
@@ -114,14 +125,49 @@ class ApiService {
     }
   }
 
-  Future<void> saveToken(String token) async {
+  Future<void> saveToken(String token, {String? expiresAt}) async {
+    await _secureStorage.write(key: _tokenKey, value: token);
+
+    if (expiresAt != null && expiresAt.isNotEmpty) {
+      await _secureStorage.write(key: _tokenExpiryKey, value: expiresAt);
+    } else {
+      await _secureStorage.delete(key: _tokenExpiryKey);
+    }
+
+    // Hapus token lama yang pernah disimpan tanpa enkripsi.
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    await prefs.remove(_tokenKey);
   }
 
   Future<String?> getToken() async {
+    final token = await _secureStorage.read(key: _tokenKey);
+    if (token != null) {
+      final expiresAt = await _secureStorage.read(key: _tokenExpiryKey);
+      final expiry = expiresAt == null ? null : DateTime.tryParse(expiresAt);
+      if (expiry != null && !expiry.isAfter(DateTime.now())) {
+        await clearToken();
+        return null;
+      }
+
+      return token;
+    }
+
+    // Migrasikan token instalasi lama ke Android Keystore/secure storage.
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    final legacyToken = prefs.getString(_tokenKey);
+    if (legacyToken != null) {
+      await saveToken(legacyToken);
+    }
+
+    return legacyToken;
+  }
+
+  Future<void> clearToken() async {
+    await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.delete(key: _tokenExpiryKey);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
   }
 
   /// Validate token by calling /api/user endpoint.
@@ -142,7 +188,14 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await clearToken();
+      }
+      return false;
     } catch (e) {
       debugPrint('[ApiService] validateToken error: $e');
       return false;
@@ -167,8 +220,7 @@ class ApiService {
         // Ignore errors during logout request
       }
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    await clearToken();
   }
 
   Future<Map<String, dynamic>> getCategories() async {

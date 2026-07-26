@@ -41,6 +41,7 @@ dependencies:
   provider: ^6.1.2
   image_picker: ^1.1.2
   flutter_ringtone_player: ^4.0.0+4
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:

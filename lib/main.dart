@@ -55,7 +55,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final ApiService _apiService = ApiService();
-  bool _showSplash = true;
+  bool _isInitializing = true;
   bool _isAuthenticated = false;
 
   @override
@@ -65,32 +65,37 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initializeApp() async {
-    // Check auth status by validating token against server
+    final startedAt = DateTime.now();
+    var isAuthenticated = false;
+
+    // Jangan lepaskan splash sebelum validasi token benar-benar selesai.
     final token = await _apiService.getToken();
 
     if (token != null) {
-      // Validate token is still valid by calling /api/user
       final isValid = await _apiService.validateToken();
-      _isAuthenticated = isValid;
+      isAuthenticated = isValid;
       if (!isValid) {
-        // Token is invalid/expired, clear it
-        await _apiService.logout();
+        await _apiService.clearToken();
       }
-    } else {
-      _isAuthenticated = false;
     }
-  }
 
-  void _onSplashComplete() {
+    const minimumSplashDuration = Duration(seconds: 3);
+    final elapsed = DateTime.now().difference(startedAt);
+    if (elapsed < minimumSplashDuration) {
+      await Future<void>.delayed(minimumSplashDuration - elapsed);
+    }
+
+    if (!mounted) return;
     setState(() {
-      _showSplash = false;
+      _isAuthenticated = isAuthenticated;
+      _isInitializing = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) {
-      return SplashScreen(onInitializationComplete: _onSplashComplete);
+    if (_isInitializing) {
+      return const SplashScreen();
     }
 
     return _isAuthenticated ? const HomeScreen() : const LoginScreen();

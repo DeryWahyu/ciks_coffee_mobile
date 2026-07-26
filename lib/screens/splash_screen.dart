@@ -1,12 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
-  final VoidCallback onInitializationComplete;
-
-  const SplashScreen({super.key, required this.onInitializationComplete});
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -19,7 +15,6 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<Offset> _slideAnimation;
 
   late Animation<double> _scaleAnimation;
-  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -56,17 +51,10 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-
-    // Automatically navigate after 3.0 seconds total
-    _navigationTimer = Timer(
-      const Duration(milliseconds: 3000),
-      widget.onInitializationComplete,
-    );
   }
 
   @override
   void dispose() {
-    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
