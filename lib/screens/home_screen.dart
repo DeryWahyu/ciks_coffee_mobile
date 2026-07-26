@@ -163,11 +163,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final cart = Provider.of<CartProvider>(context, listen: false);
     final lang = Provider.of<LanguageProvider>(context, listen: false);
 
-    if (product.hasLitePrice) {
-      // Coffee product: show variant picker
-      _showVariantPicker(product, cart, lang);
+    if (product.isCoffee) {
+      if (product.hasLitePrice) {
+        // Coffee with two sizes: let the customer choose the recipe variant.
+        _showVariantPicker(product, cart, lang);
+      } else {
+        // A coffee without Lite pricing still uses the Base recipe.
+        cart.addItem(product, variant: 'base');
+        _showAddedSnackbar('${product.name} (Base)', lang);
+      }
     } else {
-      // Non-coffee: add directly
+      // Non-coffee products do not have a recipe variant.
       cart.addItem(product);
       _showAddedSnackbar(product.name, lang);
     }
