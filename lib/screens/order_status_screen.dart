@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/order_model.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../services/push_notification_service.dart';
 import '../screens/history_screen.dart';
 
 class OrderStatusScreen extends StatefulWidget {
@@ -23,18 +24,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   bool _isLoading = true;
 
   Timer? _pollingTimer;
+  StreamSubscription<Map<String, dynamic>>? _pushUpdateSubscription;
   final Map<int, String> _previousStatuses = {};
 
   @override
   void initState() {
     super.initState();
     _fetchActiveOrders();
+    _pushUpdateSubscription = PushNotificationService
+        .instance
+        .orderStatusUpdates
+        .listen((_) => _fetchActiveOrders(showLoading: false));
     _startPolling();
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _pushUpdateSubscription?.cancel();
     super.dispose();
   }
 
@@ -45,12 +52,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     });
   }
 
-  Future<void> _fetchActiveOrders() async {
-    setState(() => _isLoading = true);
+  Future<void> _fetchActiveOrders({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
     final result = await _apiService.getActiveOrders();
     if (mounted) {
       setState(() {
-        _isLoading = false;
+        if (showLoading) {
+          _isLoading = false;
+        }
         if (result['success']) {
           final data = result['data'] as List<dynamic>;
           _orders = data.map((o) => OrderModel.fromJson(o)).toList();

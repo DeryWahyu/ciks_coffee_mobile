@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "496253587333",
+    "project_id": "ciks-coffee",
+    "storage_bucket": "ciks-coffee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:496253587333:android:17384b7a88b666f650feec",
+        "android_client_info": {
+          "package_name": "com.cikscoffee.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZDCqfKROwb63HOj4sCTA8wy47CgDfO-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

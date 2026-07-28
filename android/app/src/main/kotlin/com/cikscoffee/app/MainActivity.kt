@@ -1,4 +1,4 @@
-package com.example.ciks_coffee_mobile
+package com.cikscoffee.app
 
 import io.flutter.embedding.android.FlutterActivity
 

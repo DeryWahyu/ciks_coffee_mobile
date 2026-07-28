@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +8,7 @@ import '../models/product_model.dart';
 import '../providers/cart_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../services/push_notification_service.dart';
 import 'cart_screen.dart';
 import 'order_status_screen.dart';
 import 'history_screen.dart';
@@ -12,10 +16,11 @@ import 'profile_screen.dart';
 import 'table_availability_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:ui';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,6 +28,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  StreamSubscription<void>? _statusNavigationSubscription;
 
   List<dynamic> _categories = [];
   List<dynamic> _products = [];
@@ -37,6 +43,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex.clamp(0, 4);
+    _statusNavigationSubscription = PushNotificationService
+        .instance
+        .statusNavigation
+        .listen((_) {
+          PushNotificationService.instance.consumePendingStatusNavigation();
+          if (mounted) {
+            setState(() => _currentIndex = 2);
+          }
+        });
     _fetchCategories();
     _fetchProducts();
     _fetchProfile();
@@ -47,6 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _bannerAnimReady = true);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _statusNavigationSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchProfile() async {

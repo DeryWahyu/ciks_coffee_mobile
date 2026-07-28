@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -7,11 +11,15 @@ import 'providers/language_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/api_service.dart';
+import 'services/push_notification_service.dart';
 
 import 'screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await PushNotificationService.instance.initialize();
   await initializeDateFormatting('id_ID');
   await initializeDateFormatting('en_US');
   runApp(const MyApp());
@@ -74,7 +82,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (token != null) {
       final isValid = await _apiService.validateToken();
       isAuthenticated = isValid;
+      if (isValid) {
+        unawaited(
+          PushNotificationService.instance.initializeForAuthenticatedUser(),
+        );
+      }
       if (!isValid) {
+        await PushNotificationService.instance.onLoggedOut();
         await _apiService.clearToken();
       }
     }
@@ -98,6 +112,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return const SplashScreen();
     }
 
-    return _isAuthenticated ? const HomeScreen() : const LoginScreen();
+    final openStatus = PushNotificationService.instance
+        .consumePendingStatusNavigation();
+    return _isAuthenticated
+        ? HomeScreen(initialIndex: openStatus ? 2 : 0)
+        : const LoginScreen();
   }
 }

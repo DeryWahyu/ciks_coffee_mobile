@@ -49,10 +49,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        await saveToken(
-          data['access_token'],
-          expiresAt: data['expires_at'],
-        );
+        await saveToken(data['access_token'], expiresAt: data['expires_at']);
         return {'success': true, 'user': UserModel.fromJson(data['user'])};
       } else {
         try {
@@ -202,7 +199,7 @@ class ApiService {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout({String? deviceToken}) async {
     final token = await getToken();
     if (token != null) {
       try {
@@ -214,13 +211,51 @@ class ApiService {
                 'Accept': 'application/json',
                 'Authorization': 'Bearer $token',
               },
+              body: jsonEncode({
+                if (deviceToken != null && deviceToken.isNotEmpty)
+                  'device_token': deviceToken,
+              }),
             )
             .timeout(const Duration(seconds: 5));
       } catch (_) {
-        // Ignore errors during logout request
+        // Token lokal tetap dibersihkan walaupun server sedang tidak terjangkau.
       }
     }
     await clearToken();
+  }
+
+  Future<bool> registerDeviceToken(String deviceToken) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/device-tokens'),
+            headers: await _authHeaders(),
+            body: jsonEncode({'token': deviceToken, 'platform': 'android'}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (error) {
+      debugPrint('[ApiService] registerDeviceToken error: $error');
+      return false;
+    }
+  }
+
+  Future<bool> unregisterDeviceToken(String deviceToken) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/device-tokens'),
+            headers: await _authHeaders(),
+            body: jsonEncode({'token': deviceToken}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      return response.statusCode == 200;
+    } catch (error) {
+      debugPrint('[ApiService] unregisterDeviceToken error: $error');
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>> getCategories() async {

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/push_notification_service.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
 
@@ -46,6 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_name', user.name);
       }
+      unawaited(
+        PushNotificationService.instance.initializeForAuthenticatedUser(),
+      );
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

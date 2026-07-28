@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/push_notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
@@ -37,11 +38,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _toggleNotification(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notifications_enabled', value);
+    final isEnabled = await PushNotificationService.instance.setEnabled(value);
+    if (!mounted) return;
+
     setState(() {
-      _notificationsEnabled = value;
+      _notificationsEnabled = value ? isEnabled : false;
     });
+
+    if (value && !isEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Izin notifikasi belum aktif. Periksa pengaturan aplikasi di perangkat.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _fetchProfile() async {
@@ -85,7 +97,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await _apiService.logout();
+              final deviceToken = await PushNotificationService.instance
+                  .currentToken();
+              await _apiService.logout(deviceToken: deviceToken);
+              await PushNotificationService.instance.onLoggedOut();
               if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
