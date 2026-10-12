@@ -26,6 +26,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/gradle-wrapper.properties
+            pubspec.lock
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.41.6'
@@ -46,7 +51,9 @@ jobs:
           printf '%s' "$ANDROID_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
           chmod 0600 "$HOME/.android/debug.keystore"
       - name: Build Android APK
-        run: flutter build apk --release --build-number "$((1000 + GITHUB_RUN_NUMBER))"
+        run: |
+          printf '\norg.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m\norg.gradle.workers.max=2\n' >> android/gradle.properties
+          flutter build apk --release --build-number "$((1000 + GITHUB_RUN_NUMBER))"
       - name: Verify production server and signing identity
         run: |
           python3 tool/verify_production_apk.py build/app/outputs/flutter-apk/app-release.apk
@@ -90,8 +97,8 @@ jobs:
           set -euo pipefail
           : "${VPS_HOST:?}" "${VPS_PORT:?}" "${VPS_USER:?}" "${VPS_SSH_KEY:?}" "${VPS_KNOWN_HOSTS:?}"
           install -d -m 0700 "$RUNNER_TEMP/vps-ssh"
-          printf '%s\n' "$VPS_SSH_KEY" > "$RUNNER_TEMP/vps-ssh/key"
-          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$RUNNER_TEMP/vps-ssh/known_hosts"
+          printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/vps-ssh/key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" | tr -d '\r' > "$RUNNER_TEMP/vps-ssh/known_hosts"
           chmod 0600 "$RUNNER_TEMP/vps-ssh/key"
           trap 'rm -f "$RUNNER_TEMP/vps-ssh/key"' EXIT
           digest=$(sha256sum release/app-release.apk | cut -d ' ' -f 1)
