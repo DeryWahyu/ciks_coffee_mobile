@@ -11,6 +11,18 @@ android {
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
+    // CI supplies the existing manual-install key explicitly instead of
+    // depending on the runner's Android user-home directory.
+    val ciKeystore = System.getenv("CIKS_ANDROID_KEYSTORE")
+    if (!ciKeystore.isNullOrBlank()) {
+        signingConfigs.getByName("debug") {
+            storeFile = file(ciKeystore)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

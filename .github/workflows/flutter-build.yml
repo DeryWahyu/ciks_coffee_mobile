@@ -47,11 +47,17 @@ jobs:
           ANDROID_DEBUG_KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
           : "${ANDROID_DEBUG_KEYSTORE_B64:?Signing key missing}"
-          install -d -m 0700 "$HOME/.android"
-          printf '%s' "$ANDROID_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
-          chmod 0600 "$HOME/.android/debug.keystore"
+          install -d -m 0700 "$RUNNER_TEMP/cikscoffee-signing"
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/cikscoffee-signing/debug.keystore"
+          chmod 0600 "$RUNNER_TEMP/cikscoffee-signing/debug.keystore"
+          keytool -exportcert -alias androiddebugkey -storepass android \
+            -keystore "$RUNNER_TEMP/cikscoffee-signing/debug.keystore" | sha256sum \
+            | grep -q 'eed71304c605279ee441a8837992a3cbcb4060625f7ec9177c622d847e9c7c3d'
       - name: Build Android APK
         run: |
+          if [[ "$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" != pull_request ]]; then
+            export CIKS_ANDROID_KEYSTORE="$RUNNER_TEMP/cikscoffee-signing/debug.keystore"
+          fi
           printf '\norg.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m\norg.gradle.workers.max=2\n' >> android/gradle.properties
           flutter build apk --release --build-number "$((1000 + GITHUB_RUN_NUMBER))"
       - name: Verify production server and signing identity
@@ -72,7 +78,7 @@ jobs:
           retention-days: 3
       - name: Remove signing key from runner
         if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: rm -f "$HOME/.android/debug.keystore"
+        run: rm -f "$RUNNER_TEMP/cikscoffee-signing/debug.keystore"
 
   publish:
     needs: build
