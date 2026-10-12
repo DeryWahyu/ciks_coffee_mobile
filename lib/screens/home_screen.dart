@@ -259,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Base variant
               _buildVariantOption(
                 label: 'Base',
-                subtitle: 'Original size',
+                subtitle: lang.tr('Ukuran reguler'),
                 price: _formatPrice(product.price),
                 icon: Icons.coffee,
                 onTap: () {
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Lite variant
               _buildVariantOption(
                 label: 'Lite',
-                subtitle: 'Smaller size',
+                subtitle: lang.tr('Ukuran lebih kecil'),
                 price: _formatPrice(product.priceLite),
                 icon: Icons.local_cafe,
                 onTap: () {
@@ -575,6 +575,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                     child: Container(
                       height: 130,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
@@ -597,6 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           // Decorative circles
                           Positioned(
@@ -763,7 +765,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Cari meja yang tersedia',
+                                lang.tr('Cari meja yang tersedia'),
                                 style: GoogleFonts.inter(
                                   color: const Color(0xFF2C1810),
                                   fontSize: 13,
@@ -772,7 +774,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                'Lihat denah dan status meja secara langsung',
+                                lang.tr(
+                                  'Lihat denah dan status meja secara langsung',
+                                ),
                                 style: GoogleFonts.inter(
                                   color: const Color(
                                     0xFF5D3A1A,

@@ -4,8 +4,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../models/table_layout_model.dart';
+import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 
 class TableAvailabilityScreen extends StatefulWidget {
@@ -115,6 +117,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
   @override
   Widget build(BuildContext context) {
     final data = _data;
+    final lang = Provider.of<LanguageProvider?>(context);
     return Scaffold(
       backgroundColor: _cream,
       appBar: AppBar(
@@ -124,7 +127,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         scrolledUnderElevation: 0,
         centerTitle: true,
         title: Text(
-          'Ketersediaan meja',
+          lang?.tr('Ketersediaan meja') ?? 'Ketersediaan meja',
           style: GoogleFonts.poppins(
             color: _espresso,
             fontSize: 16,
@@ -133,7 +136,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         ),
         actions: [
           IconButton(
-            tooltip: 'Muat ulang',
+            tooltip: lang?.tr('Muat ulang') ?? 'Muat ulang',
             onPressed: _isRefreshing ? null : () => _loadLayout(),
             icon: _isRefreshing
                 ? const SizedBox(
@@ -146,7 +149,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         ],
       ),
       body: data == null
-          ? _buildInitialState()
+          ? _buildInitialState(lang)
           : RefreshIndicator(
               color: _brown,
               onRefresh: () => _loadLayout(),
@@ -159,13 +162,13 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _buildHero(data),
+                        _buildHero(data, lang),
                         const SizedBox(height: 20),
-                        _buildMapCard(data),
+                        _buildMapCard(data, lang),
                         const SizedBox(height: 20),
-                        _buildLegend(),
+                        _buildLegend(lang),
                         const SizedBox(height: 20),
-                        _buildAvailabilityList(data),
+                        _buildAvailabilityList(data, lang),
                       ]),
                     ),
                   ),
@@ -175,7 +178,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     );
   }
 
-  Widget _buildInitialState() {
+  Widget _buildInitialState([LanguageProvider? lang]) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: _brown));
     }
@@ -201,7 +204,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
             ),
             const SizedBox(height: 18),
             Text(
-              'Denah belum dapat dimuat',
+              lang?.tr('Denah belum dapat dimuat') ?? 'Denah belum dapat dimuat',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 color: _espresso,
@@ -211,7 +214,9 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
             ),
             const SizedBox(height: 7),
             Text(
-              _errorMessage ?? 'Silakan coba lagi dalam beberapa saat.',
+              _errorMessage ??
+                  (lang?.tr('Silakan coba lagi dalam beberapa saat.') ??
+                      'Silakan coba lagi dalam beberapa saat.'),
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 color: _espresso.withValues(alpha: 0.58),
@@ -231,7 +236,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                 ),
               ),
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Coba lagi'),
+              label: Text(lang?.tr('Coba lagi') ?? 'Coba lagi'),
             ),
           ],
         ),
@@ -239,10 +244,10 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     );
   }
 
-  Widget _buildHero(TableLayoutData data) {
+  Widget _buildHero(TableLayoutData data, [LanguageProvider? lang]) {
     final summary = data.summary;
     return Container(
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF3D2517), Color(0xFF805434)],
@@ -259,116 +264,132 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         ],
       ),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Positioned(
-            right: -35,
-            top: -42,
+            right: -30,
+            top: -35,
             child: Container(
-              width: 145,
-              height: 145,
+              width: 155,
+              height: 155,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: Colors.white.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.event_seat_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      data.layout.name,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+          Positioned(
+            right: 45,
+            bottom: -45,
+            child: Container(
+              width: 115,
+              height: 115,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 22),
-              RichText(
-                text: TextSpan(
-                  style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    TextSpan(
-                      text: '${summary.available} ',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.event_seat_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                    TextSpan(
-                      text: 'meja tersedia',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.86),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        data.layout.name,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'dari ${summary.total} meja yang sedang ditampilkan',
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 7,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: FractionallySizedBox(
-                  widthFactor: summary.total == 0
-                      ? 0
-                      : summary.available / summary.total,
-                  alignment: Alignment.centerLeft,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(color: Color(0xFF91DDC5)),
+                const SizedBox(height: 22),
+                RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.poppins(color: Colors.white),
+                    children: [
+                      TextSpan(
+                        text: '${summary.available} ',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      TextSpan(
+                        text: lang?.tr('meja tersedia') ?? 'meja tersedia',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.86),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              if (_lastRefreshedAt != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 3),
                 Text(
-                  'Diperbarui ${DateFormat('HH:mm').format(_lastRefreshedAt!)} - otomatis setiap 15 detik',
+                  '${lang?.tr('dari') ?? 'dari'} ${summary.total} ${lang?.tr('meja yang sedang ditampilkan') ?? 'meja yang sedang ditampilkan'}',
                   style: GoogleFonts.poppins(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontSize: 9.5,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
                   ),
                 ),
+                const SizedBox(height: 16),
+                Container(
+                  height: 7,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: FractionallySizedBox(
+                    widthFactor: summary.total == 0
+                        ? 0
+                        : summary.available / summary.total,
+                    alignment: Alignment.centerLeft,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(color: Color(0xFF91DDC5)),
+                    ),
+                  ),
+                ),
+                if (_lastRefreshedAt != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '${lang?.tr('Diperbarui') ?? 'Diperbarui'} ${DateFormat('HH:mm').format(_lastRefreshedAt!)} - ${lang?.tr('otomatis setiap 15 detik') ?? 'otomatis setiap 15 detik'}',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withValues(alpha: 0.62),
+                      fontSize: 9.5,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMapCard(TableLayoutData data) {
+  Widget _buildMapCard(TableLayoutData data, [LanguageProvider? lang]) {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       decoration: BoxDecoration(
@@ -395,7 +416,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Denah ketersediaan',
+                        lang?.tr('Denah ketersediaan') ?? 'Denah ketersediaan',
                         style: GoogleFonts.poppins(
                           color: _espresso,
                           fontSize: 14,
@@ -404,7 +425,8 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Ketuk meja untuk melihat detail status.',
+                        lang?.tr('Ketuk meja untuk melihat detail status.') ??
+                            'Ketuk meja untuk melihat detail status.',
                         style: GoogleFonts.poppins(
                           color: _espresso.withValues(alpha: 0.52),
                           fontSize: 10.5,
@@ -803,12 +825,24 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     });
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend([LanguageProvider? lang]) {
     final items = [
-      _LegendItem('Tersedia', _statusStyleFor('available')),
-      _LegendItem('Terisi', _statusStyleFor('occupied')),
-      _LegendItem('Dipesan', _statusStyleFor('reserved')),
-      _LegendItem('Tidak tersedia', _statusStyleFor('unavailable')),
+      _LegendItem(
+        lang?.tr('Tersedia') ?? 'Tersedia',
+        _statusStyleFor('available'),
+      ),
+      _LegendItem(
+        lang?.tr('Terisi') ?? 'Terisi',
+        _statusStyleFor('occupied'),
+      ),
+      _LegendItem(
+        lang?.tr('Dipesan') ?? 'Dipesan',
+        _statusStyleFor('reserved'),
+      ),
+      _LegendItem(
+        lang?.tr('Tidak tersedia') ?? 'Tidak tersedia',
+        _statusStyleFor('unavailable'),
+      ),
     ];
 
     return Container(
@@ -822,7 +856,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Keterangan status',
+            lang?.tr('Keterangan status') ?? 'Keterangan status',
             style: GoogleFonts.poppins(
               color: _espresso,
               fontSize: 12,
@@ -875,13 +909,28 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     );
   }
 
-  Widget _buildAvailabilityList(TableLayoutData data) {
+  Widget _buildAvailabilityList(
+    TableLayoutData data, [
+    LanguageProvider? lang,
+  ]) {
     final rows = [
-      _AvailabilityRow('Tersedia', data.summary.available, 'available'),
-      _AvailabilityRow('Terisi', data.summary.occupied, 'occupied'),
-      _AvailabilityRow('Dipesan', data.summary.reserved, 'reserved'),
       _AvailabilityRow(
-        'Tidak tersedia',
+        lang?.tr('Tersedia') ?? 'Tersedia',
+        data.summary.available,
+        'available',
+      ),
+      _AvailabilityRow(
+        lang?.tr('Terisi') ?? 'Terisi',
+        data.summary.occupied,
+        'occupied',
+      ),
+      _AvailabilityRow(
+        lang?.tr('Dipesan') ?? 'Dipesan',
+        data.summary.reserved,
+        'reserved',
+      ),
+      _AvailabilityRow(
+        lang?.tr('Tidak tersedia') ?? 'Tidak tersedia',
         data.summary.unavailable,
         'unavailable',
       ),
@@ -898,7 +947,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Ringkasan area',
+            lang?.tr('Ringkasan area') ?? 'Ringkasan area',
             style: GoogleFonts.poppins(
               color: _espresso,
               fontSize: 13,
@@ -949,6 +998,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
   }
 
   void _showTableDetail(CoffeeTableModel table) {
+    final lang = Provider.of<LanguageProvider?>(context, listen: false);
     final statusStyle = _statusStyleFor(table.status);
     showModalBottomSheet<void>(
       context: context,
@@ -1009,7 +1059,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Kode ${table.code}',
+                          '${lang?.tr('Kode') ?? 'Kode'} ${table.code}',
                           style: GoogleFonts.poppins(
                             color: _espresso.withValues(alpha: 0.52),
                             fontSize: 11,
@@ -1045,7 +1095,7 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
                     ),
                     const SizedBox(width: 9),
                     Text(
-                      table.statusLabel,
+                      lang?.tr(table.statusLabel) ?? table.statusLabel,
                       style: GoogleFonts.poppins(
                         color: statusStyle.color,
                         fontSize: 13,
@@ -1058,23 +1108,26 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
               const SizedBox(height: 15),
               _detailRow(
                 Icons.person_outline_rounded,
-                'Kapasitas',
-                '${table.capacity} kursi',
+                lang?.tr('Kapasitas') ?? 'Kapasitas',
+                '${table.capacity} ${lang?.tr('kursi') ?? 'kursi'}',
               ),
               if (table.statusUpdatedAt != null) ...[
                 const SizedBox(height: 10),
                 _detailRow(
                   Icons.update_rounded,
-                  'Status diperbarui',
+                  lang?.tr('Status diperbarui') ?? 'Status diperbarui',
                   DateFormat(
                     'dd MMM yyyy, HH:mm',
-                    'id_ID',
+                    lang?.isEnglish == true ? 'en_US' : 'id_ID',
                   ).format(_toJakartaTime(table.statusUpdatedAt!)),
                 ),
               ],
               const SizedBox(height: 22),
               Text(
-                'Status meja diatur oleh karyawan dan dapat berubah sewaktu-waktu.',
+                lang?.tr(
+                      'Status meja diatur oleh karyawan dan dapat berubah sewaktu-waktu.',
+                    ) ??
+                    'Status meja diatur oleh karyawan dan dapat berubah sewaktu-waktu.',
                 style: GoogleFonts.poppins(
                   color: _espresso.withValues(alpha: 0.48),
                   fontSize: 10.5,

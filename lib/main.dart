@@ -20,6 +20,7 @@ Future<void> main() async {
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await PushNotificationService.instance.initialize();
+  await ApiService.init();
   await initializeDateFormatting('id_ID');
   await initializeDateFormatting('en_US');
   runApp(const MyApp());

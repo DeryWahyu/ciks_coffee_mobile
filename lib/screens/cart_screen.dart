@@ -662,7 +662,12 @@ class _CartScreenState extends State<CartScreen> {
 
               // Bottom Checkout Section
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  95 + MediaQuery.paddingOf(context).bottom,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: const BorderRadius.vertical(

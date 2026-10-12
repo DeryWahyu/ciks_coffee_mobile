@@ -27,6 +27,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Release/profile builds remain HTTPS-only by default.
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
     }
 
     buildTypes {

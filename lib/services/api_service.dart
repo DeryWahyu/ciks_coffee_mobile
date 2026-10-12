@@ -10,20 +10,37 @@ class ApiService {
   static const _secureStorage = FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
   static const _tokenExpiryKey = 'auth_token_expires_at';
+  static const _legacyServerUrlKey = 'custom_api_base_url';
+  static const currentBaseUrl = 'https://cikscoffee.biz.id/api';
+
+  /// Remove the development-server override from existing installations.
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_legacyServerUrlKey);
+      if (saved != null &&
+          saved.trim().replaceAll(RegExp(r'/+$'), '') != currentBaseUrl) {
+        await ApiService().clearToken();
+      }
+      await prefs.remove(_legacyServerUrlKey);
+    } catch (e) {
+      debugPrint('[ApiService] init error: $e');
+    }
+  }
 
   String get baseUrl {
-    return 'https://cikscoffee.my.id/api';
+    return currentBaseUrl;
   }
 
   String get hostUrl {
-    return 'https://cikscoffee.my.id';
+    return baseUrl.replaceFirst(RegExp(r'/api$'), '');
   }
 
   String getImageUrl(String path) {
     if (path.isEmpty) return '';
     final uri = Uri.tryParse(path);
     if (uri != null && uri.hasScheme) {
-      return uri.scheme == 'https' ? path : '';
+      return (uri.scheme == 'https' || uri.scheme == 'http') ? path : '';
     }
 
     // Replace 'storage/' prefix if present, as our API route takes the raw path

@@ -223,7 +223,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   // Order list
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        8,
+                        20,
+                        110 + MediaQuery.paddingOf(context).bottom,
+                      ),
                       itemCount: _orders.length,
                       itemBuilder: (context, index) =>
                           _buildHistoryCard(_orders[index], lang),
