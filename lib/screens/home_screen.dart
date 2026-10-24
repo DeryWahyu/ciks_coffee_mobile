@@ -9,6 +9,7 @@ import '../providers/cart_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
+import '../widgets/brand_mark.dart';
 import 'cart_screen.dart';
 import 'order_status_screen.dart';
 import 'history_screen.dart';
@@ -683,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ),
-                                // Time-based icon area
+                                // CiksCoffee identity
                                 Container(
                                   width: 70,
                                   height: 70,
@@ -691,10 +692,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.white.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: Icon(
-                                    _getGreetingIcon(),
-                                    size: 36,
-                                    color: Colors.white,
+                                  child: const Center(
+                                    child: BrandMark(
+                                      size: 48,
+                                      color: BrandMark.cream,
+                                    ),
                                   ),
                                 ),
                               ],

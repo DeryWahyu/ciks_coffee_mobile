@@ -1,0 +1,20 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/cikscoffee-app-icon.png
+  adaptive_icon_background: '#FAF7F3'
+  adaptive_icon_foreground: assets/branding/cikscoffee-adaptive-foreground.png
+  min_sdk_android: 24
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/branding/cikscoffee-app-icon.png
+    background_color: '#FAF7F3'
+    theme_color: '#4A3022'
+  windows:
+    generate: true
+    image_path: assets/branding/cikscoffee-app-icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/branding/cikscoffee-app-icon.png

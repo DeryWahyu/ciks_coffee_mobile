@@ -1,5 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
+
+import '../widgets/brand_mark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,47 +14,25 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+  late final Animation<double> _entrance = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+  bool _started = false;
 
   @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800), // More subtle duration
-    );
-
-    // Fade in smoothly over the first 80% of the animation
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.8, curve: Curves.easeIn),
-      ),
-    );
-
-    // Slide up from a very slight lower position for a subtle effect
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuart),
-          ),
-        );
-
-    // Very subtle scale up
-    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuart),
-      ),
-    );
-
-    _controller.forward();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else if (!_started) {
+      _controller.forward();
+    }
+    _started = true;
   }
 
   @override
@@ -61,104 +43,223 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF4A3022), // Espresso
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Elegant Modern Container for Logo
-                  Container(
-                    padding: const EdgeInsets.all(
-                      0,
-                    ), // Padding 0 agar logo maksimal, ukuran luar tetap 184
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFF5E6D3), // Latte
-                          Color(0xFFE8D5C4), // Slightly darker latte for depth
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        // Soft glow effect
-                        BoxShadow(
-                          color: const Color(
-                            0xFFD2B48C,
-                          ).withValues(alpha: 0.25),
-                          blurRadius: 25,
-                          spreadRadius: 8,
-                          offset: const Offset(0, 10),
-                        ),
-                        // Inner ambient shadow
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Colors.white.withValues(
-                          alpha: 0.6,
-                        ), // Subtle glossy border
-                        width: 2.5,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/icon.png',
-                        width: 184, // Diperbesar maksimal
-                        height: 184,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Selamat Datang di',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Ciks Coffee',
-                    style: GoogleFonts.poppins(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Text(
-                      'Menyajikan kopi terbaik dengan cinta dan dedikasi untuk setiap cangkir',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: BrandMark.cream,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: BrandMark.cream,
+        body: Stack(
+          children: [
+            const Positioned.fill(
+              child: ExcludeSemantics(
+                child: CustomPaint(painter: _CoffeeContours()),
               ),
             ),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, viewport) => Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      child: Text(
+                        'SEJENAK UNTUK RASA',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'CiksSans',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 3,
+                          color: Color(0xFF806B5B),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, space) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: space.maxHeight,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 24,
+                              ),
+                              child: Center(
+                                child: FadeTransition(
+                                  opacity: _entrance,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.035),
+                                      end: Offset.zero,
+                                    ).animate(_entrance),
+                                    child: _SplashIdentity(
+                                      compact: viewport.maxHeight < 620,
+                                      landscape:
+                                          viewport.maxWidth >
+                                          viewport.maxHeight * 1.25,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    _LoadingFooter(reduceMotion: reduceMotion),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashIdentity extends StatelessWidget {
+  const _SplashIdentity({required this.compact, required this.landscape});
+
+  final bool compact;
+  final bool landscape;
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: landscape
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Ciks Coffee',
+          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'CiksDisplay',
+            fontSize: compact ? 36 : 42,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -1.1,
+            height: 1.2,
+            color: BrandMark.espresso,
+          ),
+        ),
+        SizedBox(height: landscape ? 16 : 24),
+        Container(width: 28, height: 1, color: const Color(0xFFC5A583)),
+        SizedBox(height: landscape ? 16 : 24),
+        Text(
+          'Rasa yang akrab.\nJeda yang berarti.',
+          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 14,
+            height: 1.8,
+            color: Color(0xFF806B5B),
+          ),
+        ),
+      ],
+    );
+    return landscape
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const BrandMark(size: 112),
+              const SizedBox(width: 40),
+              Flexible(child: copy),
+            ],
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BrandMark(size: compact ? 96 : 136),
+              SizedBox(height: compact ? 20 : 28),
+              copy,
+            ],
+          );
+  }
+}
+
+class _LoadingFooter extends StatelessWidget {
+  const _LoadingFooter({required this.reduceMotion});
+
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+      child: Semantics(
+        label: 'Memuat Ciks Coffee',
+        child: ExcludeSemantics(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 64,
+                height: 2,
+                child: reduceMotion
+                    ? const ColoredBox(
+                        color: Color(0xFFE8DED3),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 2,
+                            child: ColoredBox(color: BrandMark.espresso),
+                          ),
+                        ),
+                      )
+                    : const LinearProgressIndicator(
+                        color: BrandMark.espresso,
+                        backgroundColor: Color(0xFFE8DED3),
+                        borderRadius: BorderRadius.all(Radius.circular(2)),
+                      ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'SEBENTAR, YA...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'CiksSans',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 2.4,
+                  color: Color(0xFF806B5B),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Quiet cup-ring contours, drawn locally so the splash works fully offline.
+class _CoffeeContours extends CustomPainter {
+  const _CoffeeContours();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFE8DED3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    final radius = math.min(size.width * 0.65, 290.0);
+    final upper = Offset(size.width + radius * 0.18, size.height * 0.1);
+    final lower = Offset(-radius * 0.4, size.height * 0.86);
+    for (var index = 0; index < 3; index++) {
+      canvas.drawCircle(upper, radius + index * 16, paint);
+      canvas.drawCircle(lower, radius * 0.75 + index * 16, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CoffeeContours oldDelegate) => false;
 }

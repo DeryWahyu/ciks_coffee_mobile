@@ -1,11 +1,11 @@
 {
-    "name": "ciks_coffee_mobile",
-    "short_name": "ciks_coffee_mobile",
+    "name": "Ciks Coffee",
+    "short_name": "Ciks Coffee",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAF7F3",
+    "theme_color": "#4A3022",
+    "description": "Menu favorit dan waktu jedamu bersama Ciks Coffee.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

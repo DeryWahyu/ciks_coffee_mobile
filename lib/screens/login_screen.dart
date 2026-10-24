@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
+import '../widgets/brand_mark.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -197,11 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.coffee_rounded,
-                              size: 14,
-                              color: Color(0xFFD4A574),
-                            ),
+                            const BrandMark(size: 16, color: Color(0xFFD4A574)),
                             const SizedBox(width: 6),
                             Text(
                               'EST. 2024',
@@ -219,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Brand Logo Emblem
+                  // Shared aroma mark
                   Container(
                     width: 76,
                     height: 76,
@@ -238,8 +235,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(10),
-                    child: Image.asset('assets/icon.png', fit: BoxFit.contain),
+                    padding: const EdgeInsets.all(8),
+                    child: const BrandMark(size: 60),
                   ),
                   const SizedBox(height: 12),
 

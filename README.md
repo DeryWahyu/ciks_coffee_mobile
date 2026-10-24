@@ -6,6 +6,34 @@ The public API remains `https://cikscoffee.biz.id/api` and the download URL
 remains `https://cikscoffee.biz.id/downloads/cikscoffee-latest.apk`.
 The existing signing certificate is retained for installation updates.
 
+## Mobile branding
+
+The aroma mark in `assets/branding/cikscoffee-mark.png` is the approved,
+enlarged web mark. `BrandMark` shares it across splash, login, registration,
+home, profile/about, and order status. Coffee category and product placeholder
+icons keep their functional meaning.
+
+The Flutter splash uses warm cream, espresso, locally drawn cup-ring outlines,
+and bundled Inter/Playfair Display fonts. It works without downloading imagery
+or fonts, adapts to small screens and larger text, and respects reduced motion.
+The existing authentication and token validation still control when it closes.
+
+Native Android launch screens (including Android 12+) and iOS use the same mark
+and cream background. Android adaptive/themed icons, notification silhouettes,
+iOS, web, Windows, and macOS icons are exported from that single source.
+Android launch resources follow the [Flutter splash guidance](https://docs.flutter.dev/platform-integration/android/splash-screen).
+
+Regenerate platform assets without changing the approved artwork:
+
+```powershell
+dart run tool/generate_brand_assets.dart
+dart run flutter_launcher_icons
+```
+
+Font files come from [Google Fonts](https://github.com/google/fonts), with
+their SIL Open Font License notices in `assets/fonts/`.
+Already-installed applications need the new APK to receive the branding.
+
 A new Flutter project.
 
 ## Getting Started

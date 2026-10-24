@@ -1,5 +1,5 @@
 name: ciks_coffee_mobile
-description: "A new Flutter project."
+description: "Aplikasi pemesanan menu Ciks Coffee."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -57,11 +57,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
-
-flutter_icons:
-  android: true
-  ios: true
-  image_path: "assets/icon.png"
+  image: ^4.8.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,7 +72,17 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/icon.png
+    - assets/branding/cikscoffee-mark.png
+    - assets/fonts/PlayfairDisplay-OFL.txt
+    - assets/fonts/Inter-OFL.txt
+
+  fonts:
+    - family: CiksDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay.ttf
+    - family: CiksSans
+      fonts:
+        - asset: assets/fonts/Inter.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

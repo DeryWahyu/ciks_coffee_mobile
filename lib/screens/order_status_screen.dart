@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../widgets/brand_mark.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -404,11 +405,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       color: Colors.white.withValues(alpha: 0.18),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.local_cafe_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+                  child: const BrandMark(size: 38, color: BrandMark.cream),
                 ),
               ],
             ),

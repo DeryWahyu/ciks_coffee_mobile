@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
+import '../widgets/brand_mark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
@@ -140,11 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFF4A3022).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.coffee,
-                  color: Color(0xFF4A3022),
-                  size: 40,
-                ),
+                child: const BrandMark(size: 48),
               ),
               const SizedBox(height: 16),
               Text(
@@ -694,10 +691,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: Colors.white.withValues(alpha: 0.18),
                             ),
                           ),
-                          child: const Icon(
-                            Icons.coffee_rounded,
-                            color: Colors.white,
-                            size: 20,
+                          child: const BrandMark(
+                            size: 26,
+                            color: BrandMark.cream,
                           ),
                         ),
                       ],

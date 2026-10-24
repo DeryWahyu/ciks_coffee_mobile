@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/brand_mark.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -226,6 +227,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                       ),
+                      const BrandMark(size: 36, color: BrandMark.cream),
                     ],
                   ),
                   const SizedBox(height: 22),
