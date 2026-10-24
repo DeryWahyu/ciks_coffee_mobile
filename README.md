@@ -1,5 +1,11 @@
 # ciks_coffee_mobile
 
+Production APKs are published by GitHub Actions to the isolated
+`cikscoffee-dery` Docker stack on `45.66.153.149`, SSH port `20193`.
+The public API remains `https://cikscoffee.biz.id/api` and the download URL
+remains `https://cikscoffee.biz.id/downloads/cikscoffee-latest.apk`.
+The existing signing certificate is retained for installation updates.
+
 A new Flutter project.
 
 ## Getting Started

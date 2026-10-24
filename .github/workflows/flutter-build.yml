@@ -92,7 +92,7 @@ jobs:
         with:
           name: android-production-${{ github.sha }}
           path: release
-      - name: Publish APK to VPS
+      - name: Publish APK to isolated Docker stack
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
