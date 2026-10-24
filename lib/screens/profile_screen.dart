@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/coffee_overlays.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
@@ -20,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService _apiService = ApiService();
   UserModel? _user;
   bool _isLoading = true;
+  bool _isLoggingOut = false;
   bool _notificationsEnabled = true;
 
   @override
@@ -70,304 +72,133 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _logout() async {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showDialog(
+  Future<void> _logout() async {
+    if (_isLoggingOut) return;
+    final lang = context.read<LanguageProvider>();
+    _isLoggingOut = true;
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => CoffeeDialog(
+          title: lang.isEnglish ? 'Take a little break?' : 'Keluar dari akun?',
+          message: lang.tr('Apakah kamu yakin ingin keluar dari akun ini?'),
+          icon: Icons.logout_rounded,
+          accent: CoffeeColors.danger,
+          dismissLabel: lang.tr('Tutup'),
+          actions: [
+            CoffeeButton(
+              label: lang.tr('Keluar'),
+              destructive: true,
+              onPressed: () => Navigator.of(ctx).pop(true),
+            ),
+            CoffeeButton(
+              label: lang.tr('Batal'),
+              secondary: true,
+              onPressed: () => Navigator.of(ctx).pop(false),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      final deviceToken = await PushNotificationService.instance.currentToken();
+      await _apiService.logout(deviceToken: deviceToken);
+      await PushNotificationService.instance.onLoggedOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    } finally {
+      _isLoggingOut = false;
+    }
+  }
+
+  void _showAboutDialog() {
+    final lang = context.read<LanguageProvider>();
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          lang.tr('Keluar'),
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF4A3022),
-          ),
+      builder: (ctx) => CoffeeDialog(
+        title: 'Ciks Coffee',
+        message: lang.tr(
+          'Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!',
         ),
         content: Text(
-          lang.tr('Apakah kamu yakin ingin keluar dari akun ini?'),
-          style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              lang.tr('Batal'),
-              style: GoogleFonts.inter(color: Colors.grey),
-            ),
+          lang.tr('Versi 1.0.0'),
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            color: CoffeeColors.muted,
+            fontSize: 12,
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final deviceToken = await PushNotificationService.instance
-                  .currentToken();
-              await _apiService.logout(deviceToken: deviceToken);
-              await PushNotificationService.instance.onLoggedOut();
-              if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              lang.tr('Keluar'),
-              style: GoogleFonts.inter(color: Colors.white),
-            ),
+        ),
+        dismissLabel: lang.tr('Tutup'),
+        actions: [
+          CoffeeButton(
+            label: lang.tr('Tutup'),
+            onPressed: () => Navigator.of(ctx).pop(),
           ),
         ],
       ),
     );
   }
 
-  void _showAboutDialog() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const BrandMark(size: 48),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Ciks Coffee',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                lang.tr('Versi 1.0.0'),
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.5),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                lang.tr(
-                  'Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!',
-                ),
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.7),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    lang.tr('Tutup'),
-                    style: GoogleFonts.inter(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showPrivacyPolicyDialog() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showDialog(
+    final lang = context.read<LanguageProvider>();
+    showDialog<void>(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.privacy_tip_outlined,
-                  color: Color(0xFF4A3022),
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                lang.tr('Kebijakan Privasi'),
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                lang.isEnglish
-                    ? 'Your privacy is important to us. We collect your data only for order processing and improving service quality. We do not share your data with third parties without your explicit consent.'
-                    : 'Privasi Anda penting bagi kami. Kami mengumpulkan data Anda hanya untuk keperluan pemrosesan pesanan dan peningkatan layanan. Kami tidak membagikan data Anda kepada pihak ketiga tanpa izin Anda.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.7),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    lang.tr('Tutup'),
-                    style: GoogleFonts.inter(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
+      builder: (ctx) => CoffeeDialog(
+        title: lang.tr('Kebijakan Privasi'),
+        icon: Icons.privacy_tip_outlined,
+        message: lang.isEnglish
+            ? 'Your privacy is important to us. We collect your data only for order processing and improving service quality. We do not share your data with third parties without your explicit consent.'
+            : 'Privasi Anda penting bagi kami. Kami mengumpulkan data Anda hanya untuk keperluan pemrosesan pesanan dan peningkatan layanan. Kami tidak membagikan data Anda kepada pihak ketiga tanpa izin Anda.',
+        dismissLabel: lang.tr('Tutup'),
+        actions: [
+          CoffeeButton(
+            label: lang.tr('Tutup'),
+            onPressed: () => Navigator.of(ctx).pop(),
           ),
-        ),
+        ],
       ),
     );
   }
 
   void _showHelpDialog() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showDialog(
+    final lang = context.read<LanguageProvider>();
+    showDialog<void>(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.help_outline,
-                  color: Color(0xFF4A3022),
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                lang.tr('Bantuan'),
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                lang.isEnglish
-                    ? 'Need help with your order or the application? Contact our customer support team.\n\nEmail: support@cikscoffee.com\nPhone: +62 812-3456-7890'
-                    : 'Butuh bantuan terkait pesanan atau penggunaan aplikasi? Hubungi tim layanan pelanggan kami.\n\nEmail: support@cikscoffee.com\nTelepon: +62 812-3456-7890',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.7),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A3022),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(
-                    lang.tr('Tutup'),
-                    style: GoogleFonts.inter(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
+      builder: (ctx) => CoffeeDialog(
+        title: lang.tr('Bantuan'),
+        icon: Icons.support_agent_rounded,
+        message: lang.isEnglish
+            ? 'Need help with your order or the application? Contact our customer support team.\n\nEmail: support@cikscoffee.com\nPhone: +62 812-3456-7890'
+            : 'Butuh bantuan terkait pesanan atau penggunaan aplikasi? Hubungi tim layanan pelanggan kami.\n\nEmail: support@cikscoffee.com\nTelepon: +62 812-3456-7890',
+        dismissLabel: lang.tr('Tutup'),
+        actions: [
+          CoffeeButton(
+            label: lang.tr('Tutup'),
+            onPressed: () => Navigator.of(ctx).pop(),
           ),
-        ),
+        ],
       ),
     );
   }
 
   void _showLanguageSheet() {
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showModalBottomSheet(
+    final lang = context.read<LanguageProvider>();
+    showCoffeeSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                lang.tr('Bahasa'),
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildLanguageOption('Bahasa Indonesia', '🇮🇩', false),
-              const SizedBox(height: 8),
-              _buildLanguageOption('English', '🇬🇧', true),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
+      builder: (_) => CoffeeSheet(
+        title: lang.isEnglish ? 'Choose language' : 'Pilih Bahasa',
+        dismissLabel: lang.tr('Tutup'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildLanguageOption('Bahasa Indonesia', '🇮🇩', false),
+            const SizedBox(height: 12),
+            _buildLanguageOption('English', '🇬🇧', true),
+          ],
+        ),
+      ),
     );
   }
 
@@ -601,9 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(
-                          height: 110 + MediaQuery.paddingOf(context).bottom,
-                        ),
+                        SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -961,50 +790,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showInfoSheet() {
     if (_user == null) return;
-    final lang = Provider.of<LanguageProvider>(context, listen: false);
-    showModalBottomSheet(
+    final lang = context.read<LanguageProvider>();
+    showCoffeeSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                lang.tr('Informasi Pribadi'),
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildInfoRow(Icons.person_outline, lang.tr('Nama'), _user!.name),
-              const SizedBox(height: 14),
-              _buildInfoRow(Icons.email_outlined, 'Email', _user!.email),
-              const SizedBox(height: 14),
-              _buildInfoRow(
-                Icons.phone_outlined,
-                lang.tr('Telepon'),
-                _user!.phone ?? lang.tr('Belum diatur'),
-              ),
-              const SizedBox(height: 14),
-              _buildInfoRow(
-                Icons.badge_outlined,
-                lang.tr('Peran'),
-                lang.tr(_user!.role.toUpperCase()),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
+      builder: (_) => CoffeeSheet(
+        title: lang.tr('Informasi Pribadi'),
+        dismissLabel: lang.tr('Tutup'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInfoRow(Icons.person_outline, lang.tr('Nama'), _user!.name),
+            const SizedBox(height: 16),
+            _buildInfoRow(Icons.email_outlined, 'Email', _user!.email),
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              Icons.phone_outlined,
+              lang.tr('Telepon'),
+              _user!.phone ?? lang.tr('Belum diatur'),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              Icons.badge_outlined,
+              lang.tr('Peran'),
+              lang.tr(_user!.role.toUpperCase()),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

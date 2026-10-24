@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/coffee_overlays.dart';
+import '../widgets/order_dialogs.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +24,7 @@ class OrderStatusScreen extends StatefulWidget {
 class _OrderStatusScreenState extends State<OrderStatusScreen> {
   final ApiService _apiService = ApiService();
   List<OrderModel> _orders = [];
+  final Set<int> _confirmingPickupIds = {};
   bool _isLoading = true;
 
   Timer? _pollingTimer;
@@ -157,68 +160,37 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   Future<void> _confirmPickup(OrderModel order, LanguageProvider lang) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          lang.isEnglish ? 'Confirm Pickup' : 'Konfirmasi Pengambilan',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF4A3022),
-          ),
+    if (_confirmingPickupIds.contains(order.id)) return;
+    setState(() => _confirmingPickupIds.add(order.id));
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => PickupConfirmationDialog(
+          orderNumber: order.orderNumber,
+          english: lang.isEnglish,
         ),
-        content: Text(
-          lang.isEnglish
-              ? 'Have you picked up order ${order.orderNumber}?'
-              : 'Apakah pesanan ${order.orderNumber} sudah kamu ambil?',
-          style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              lang.isEnglish ? 'Not yet' : 'Belum',
-              style: GoogleFonts.inter(color: Colors.grey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A3022),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              lang.isEnglish ? 'Picked Up' : 'Sudah Diambil',
-              style: GoogleFonts.inter(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
+      );
+      if (confirmed != true || !mounted) return;
       final result = await _apiService.confirmPickup(order.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: result['success']
-                ? const Color(0xFF4A3022)
-                : Colors.red.shade700,
-          ),
-        );
-        if (result['success']) {
-          _fetchActiveOrders();
-          globalHistoryRefresh.value++; // Trigger HistoryScreen refresh
-        }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: result['success']
+              ? CoffeeColors.ink
+              : CoffeeColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      if (result['success']) {
+        _fetchActiveOrders();
+        globalHistoryRefresh.value++;
       }
+    } finally {
+      if (mounted) setState(() => _confirmingPickupIds.remove(order.id));
     }
   }
 
-  // ─── Status Data ───
   static const _stages = [
     {
       'status': 'menunggu_verifikasi',
@@ -308,12 +280,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               onRefresh: _fetchActiveOrders,
               color: const Color(0xFF5D3A1A),
               child: ListView.builder(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  8,
-                  20,
-                  110 + MediaQuery.paddingOf(context).bottom,
-                ),
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
                 itemCount: _orders.length + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {
@@ -706,34 +673,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             ),
           ),
 
-          // Pickup Button (only for 'selesai' status)
+          // Only the customer can move a ready order into transaction history.
           if (isReady)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _confirmPickup(order, lang),
-                  icon: const Icon(Icons.back_hand_outlined, size: 18),
-                  label: Text(
-                    lang.isEnglish
-                        ? 'Order Picked Up'
-                        : 'Pesanan Telah Diambil',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
+              child: CoffeeButton(
+                label: lang.isEnglish ? 'Picked up' : 'Sudah Ambil',
+                icon: Icons.shopping_bag_outlined,
+                loading: _confirmingPickupIds.contains(order.id),
+                onPressed: () => _confirmPickup(order, lang),
               ),
             )
           else

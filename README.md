@@ -1,5 +1,21 @@
 # ciks_coffee_mobile
 
+## Cart and order confirmation
+
+The cart uses a single checkout panel above the safe navigation area. It shows
+the QRIS method, total, and a full-width payment button, with a scrollable layout
+for short screens and larger text. Cancelling the QRIS sheet retains the cart;
+submission still requires a selected payment proof for cashier verification.
+
+`coffee_overlays.dart` supplies shared dialog/sheet surfaces and action buttons
+for pickup, payment, success, variants, order details, logout, and profile
+information. The **Sudah Ambil** confirmation explicitly explains when an order
+enters transaction history. Orders remain active until the pickup API succeeds.
+Deploy the corresponding web/API changes for the shared transaction-history rule.
+
+Run `flutter test` for responsive checkout, cancellation/proof requirements,
+explicit pickup confirmation, keyboard spacing, and existing application checks.
+
 Production APKs are published by GitHub Actions to the isolated
 `cikscoffee-dery` Docker stack on `45.66.153.149`, SSH port `20193`.
 The public API remains `https://cikscoffee.biz.id/api` and the download URL

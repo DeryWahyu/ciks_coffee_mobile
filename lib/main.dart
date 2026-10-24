@@ -14,6 +14,7 @@ import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
 
 import 'screens/splash_screen.dart';
+import 'widgets/coffee_overlays.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,33 @@ class MyApp extends StatelessWidget {
             surface: const Color(0xFFF5E6D3), // Latte
           ),
           textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
+          dialogTheme: DialogThemeData(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: const BorderSide(color: CoffeeColors.border),
+            ),
+          ),
+          bottomSheetTheme: const BottomSheetThemeData(
+            backgroundColor: Colors.white,
+            modalBarrierColor: Color(0x594A3022),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 52),
+              foregroundColor: Colors.white,
+              backgroundColor: CoffeeColors.ink,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
           useMaterial3: true,
         ),
         home: const AuthWrapper(),

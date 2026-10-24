@@ -10,6 +10,8 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/app_bottom_navigation.dart';
+import '../widgets/coffee_overlays.dart';
 import 'cart_screen.dart';
 import 'order_status_screen.dart';
 import 'history_screen.dart';
@@ -207,156 +209,43 @@ class _HomeScreenState extends State<HomeScreen> {
     CartProvider cart,
     LanguageProvider lang,
   ) {
-    showModalBottomSheet(
+    showCoffeeSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4A3022).withValues(alpha: 0.15),
-                blurRadius: 30,
-                offset: const Offset(0, -10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD2B48C).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                lang.tr('Pilih Varian'),
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2C1810),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                product.name,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: const Color(0xFF8B7355),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Base variant
-              _buildVariantOption(
-                label: 'Base',
-                subtitle: lang.tr('Ukuran reguler'),
-                price: _formatPrice(product.price),
-                icon: Icons.coffee,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  cart.addItem(product, variant: 'base');
-                  _showAddedSnackbar('${product.name} (Base)', lang);
-                },
-              ),
-              const SizedBox(height: 12),
-              // Lite variant
-              _buildVariantOption(
-                label: 'Lite',
-                subtitle: lang.tr('Ukuran lebih kecil'),
-                price: _formatPrice(product.priceLite),
-                icon: Icons.local_cafe,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  cart.addItem(product, variant: 'lite');
-                  _showAddedSnackbar('${product.name} (Lite)', lang);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildVariantOption({
-    required String label,
-    required String subtitle,
-    required String price,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE8DDD0)),
-            borderRadius: BorderRadius.circular(16),
-            color: const Color(0xFFFAF6F1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF5D3A1A), Color(0xFF8B6B4A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: const Color(0xFF2C1810),
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF8B7355),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                price,
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  color: const Color(0xFF2C1810),
-                ),
-              ),
-            ],
-          ),
+      builder: (ctx) => CoffeeSheet(
+        title: lang.isEnglish ? 'Choose your coffee' : 'Pilih varian kopimu',
+        subtitle: product.name,
+        dismissLabel: lang.tr('Tutup'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CoffeeOptionTile(
+              title: 'Base',
+              subtitle: lang.isEnglish
+                  ? 'Regular coffee intensity'
+                  : 'Takaran kopi reguler',
+              value: _formatPrice(product.price),
+              icon: Icons.coffee_outlined,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                cart.addItem(product, variant: 'base');
+                _showAddedSnackbar('${product.name} (Base)', lang);
+              },
+            ),
+            const SizedBox(height: 12),
+            CoffeeOptionTile(
+              title: 'Lite',
+              subtitle: lang.isEnglish
+                  ? 'A milder coffee taste'
+                  : 'Takaran kopi lebih ringan',
+              value: _formatPrice(product.priceLite),
+              icon: Icons.local_cafe_outlined,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                cart.addItem(product, variant: 'lite');
+                _showAddedSnackbar('${product.name} (Lite)', lang);
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -407,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E8),
-      extendBody: true,
+      extendBody: false,
       body: IndexedStack(
         index: _currentIndex,
         children: [
@@ -419,125 +308,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: Consumer<CartProvider>(
-        builder: (context, cart, child) {
-          return Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.10),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  index: 0,
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_filled,
-                  label: lang.tr('Beranda'),
-                ),
-                _buildNavItem(
-                  index: 1,
-                  icon: Icons.shopping_cart_outlined,
-                  activeIcon: Icons.shopping_cart,
-                  label: lang.tr('Keranjang'),
-                  badgeCount: cart.totalItemCount,
-                ),
-                _buildNavItem(
-                  index: 2,
-                  icon: Icons.local_shipping_outlined,
-                  activeIcon: Icons.local_shipping,
-                  label: lang.tr('Status'),
-                ),
-                _buildNavItem(
-                  index: 3,
-                  icon: Icons.receipt_long_outlined,
-                  activeIcon: Icons.receipt_long,
-                  label: lang.tr('Riwayat'),
-                ),
-                _buildNavItem(
-                  index: 4,
-                  icon: Icons.person_outline,
-                  activeIcon: Icons.person,
-                  label: lang.tr('Profil'),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    int badgeCount = 0,
-  }) {
-    final bool isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => _onBottomNavTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 14 : 10,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF4A3022).withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Badge(
-                isLabelVisible: badgeCount > 0,
-                label: Text(
-                  '$badgeCount',
-                  style: const TextStyle(fontSize: 9, color: Colors.white),
-                ),
-                backgroundColor: const Color(0xFFE57373),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Icon(
-                    isSelected ? activeIcon : icon,
-                    key: ValueKey(isSelected),
-                    color: isSelected
-                        ? const Color(0xFF4A3022)
-                        : const Color(0xFFB0B0B0),
-                    size: isSelected ? 24 : 22,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 250),
-              style: GoogleFonts.inter(
-                fontSize: isSelected ? 10 : 9,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                color: isSelected
-                    ? const Color(0xFF4A3022)
-                    : const Color(0xFFB0B0B0),
-              ),
-              child: Text(label),
-            ),
-          ],
+        builder: (context, cart, _) => AppBottomNavigation(
+          index: _currentIndex,
+          onSelected: _onBottomNavTapped,
+          language: lang,
+          cartCount: cart.totalItemCount,
         ),
       ),
     );
@@ -1072,7 +847,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );

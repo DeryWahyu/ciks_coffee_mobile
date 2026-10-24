@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../widgets/coffee_overlays.dart';
+import '../widgets/order_dialogs.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -102,25 +104,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  String _formatFullDate(String dateStr, LanguageProvider lang) {
-    try {
-      final date = _toJakartaTime(dateStr);
-      return DateFormat(
-        lang.isEnglish
-            ? 'EEEE, MMMM dd yyyy • HH:mm'
-            : 'EEEE, dd MMMM yyyy • HH:mm',
-        lang.isEnglish ? 'en_US' : 'id_ID',
-      ).format(date);
-    } catch (_) {
-      return dateStr;
-    }
-  }
+  DateTime _toJakartaTime(String value) =>
+      DateTime.parse(value).toUtc().add(const Duration(hours: 7));
 
   DateTime _jakartaNow() =>
       DateTime.now().toUtc().add(const Duration(hours: 7));
-
-  DateTime _toJakartaTime(String value) =>
-      DateTime.parse(value).toUtc().add(const Duration(hours: 7));
 
   @override
   Widget build(BuildContext context) {
@@ -223,12 +211,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   // Order list
                   Expanded(
                     child: ListView.builder(
-                      padding: EdgeInsets.fromLTRB(
-                        20,
-                        8,
-                        20,
-                        110 + MediaQuery.paddingOf(context).bottom,
-                      ),
+                      padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
                       itemCount: _orders.length,
                       itemBuilder: (context, index) =>
                           _buildHistoryCard(_orders[index], lang),
@@ -443,245 +426,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _showDetailSheet(OrderModel order, LanguageProvider lang) {
-    showModalBottomSheet(
+    showCoffeeSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle Bar
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              // Title
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          lang.isEnglish ? 'Order Details' : 'Detail Pesanan',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF4A3022),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          order.orderNumber,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(
-                              0xFF4A3022,
-                            ).withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            size: 14,
-                            color: Color(0xFF4CAF50),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            lang.isEnglish ? 'Done' : 'Selesai',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF4CAF50),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Date
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 14,
-                      color: const Color(0xFF4A3022).withValues(alpha: 0.4),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatFullDate(order.createdAt, lang),
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF4A3022).withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Divider(
-                height: 1,
-                color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
-              ),
-              // Items list
-              Flexible(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  shrinkWrap: true,
-                  children: [
-                    ...order.items.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5E6D3),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${item.quantity}x',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF4A3022),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item.productName,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: const Color(0xFF4A3022),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              _formatPrice(item.subtotal),
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: const Color(0xFF4A3022),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Divider(
-                      color: const Color(0xFFD2B48C).withValues(alpha: 0.2),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Total',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: const Color(0xFF4A3022),
-                            ),
-                          ),
-                          Text(
-                            _formatPrice(order.total),
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: const Color(0xFF4A3022),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Payment info
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5E6D3).withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.payment,
-                            size: 18,
-                            color: const Color(
-                              0xFF4A3022,
-                            ).withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            lang.isEnglish
-                                ? 'Payment Method'
-                                : 'Metode Pembayaran',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(
-                                0xFF4A3022,
-                              ).withValues(alpha: 0.5),
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            order.paymentMethod.toUpperCase(),
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF4A3022),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (_) => OrderDetailsSheet(order: order, english: lang.isEnglish),
     );
   }
 }
