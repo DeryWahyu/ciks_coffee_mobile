@@ -165,13 +165,15 @@ class _CartScreenState extends State<CartScreen> {
       ),
       body: SafeArea(
         top: false,
+        bottom: false,
         child: Consumer<CartProvider>(
           builder: (context, cart, _) {
             if (cart.isEmpty) return _emptyCart(lang);
             return LayoutBuilder(
               builder: (context, constraints) {
+                final navigationInset = MediaQuery.paddingOf(context).bottom;
                 final scrollTogether =
-                    constraints.maxHeight < 450 ||
+                    constraints.maxHeight - navigationInset < 450 ||
                     MediaQuery.textScalerOf(context).scale(1) > 1.3;
                 final items = ListView.builder(
                   shrinkWrap: scrollTogether,
@@ -192,6 +194,7 @@ class _CartScreenState extends State<CartScreen> {
                 );
                 if (scrollTogether) {
                   return SingleChildScrollView(
+                    padding: EdgeInsets.only(bottom: navigationInset),
                     child: Column(children: [items, panel]),
                   );
                 }
@@ -199,6 +202,7 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     Expanded(child: items),
                     panel,
+                    SizedBox(height: navigationInset),
                   ],
                 );
               },

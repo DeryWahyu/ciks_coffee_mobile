@@ -41,6 +41,22 @@ android {
         versionName = flutter.versionName
         // Release/profile builds remain HTTPS-only by default.
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+
+        // The release builder opts out of Flutter's three-ABI defaults, then
+        // filters every native dependency, including JNI libraries from plugins.
+        if (providers.gradleProperty("disable-abi-filtering").orNull == "true") {
+            val platformAbis = mapOf(
+                "android-arm" to "armeabi-v7a",
+                "android-arm64" to "arm64-v8a",
+                "android-x64" to "x86_64",
+            )
+            val targetPlatforms = providers.gradleProperty("target-platform")
+                .getOrElse("android-arm,android-arm64,android-x64")
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(targetPlatforms.split(",").map { platformAbis.getValue(it) })
+            }
+        }
     }
 
     buildTypes {

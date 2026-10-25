@@ -296,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E8),
-      extendBody: false,
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: [
@@ -847,7 +847,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+          ),
         ],
       ),
     );

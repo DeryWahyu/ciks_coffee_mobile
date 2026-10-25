@@ -280,7 +280,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               onRefresh: _fetchActiveOrders,
               color: const Color(0xFF5D3A1A),
               child: ListView.builder(
-                padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  8,
+                  20,
+                  24 + MediaQuery.paddingOf(context).bottom,
+                ),
                 itemCount: _orders.length + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {

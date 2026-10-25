@@ -432,7 +432,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 24),
+                        SizedBox(
+                          height: 24 + MediaQuery.paddingOf(context).bottom,
+                        ),
                       ],
                     ),
                   ),

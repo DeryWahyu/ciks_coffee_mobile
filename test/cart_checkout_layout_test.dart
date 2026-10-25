@@ -50,8 +50,15 @@ void main() {
       await tester.ensureVisible(
         find.byKey(const ValueKey('cart-checkout-action')),
       );
+      await tester.drag(find.byType(CartScreen), const Offset(0, -2000));
       await tester.pumpAndSettle();
       expect(find.text('Lanjutkan Pembayaran'), findsOneWidget);
+      expect(
+        tester
+            .getBottomLeft(find.byKey(const ValueKey('cart-checkout-action')))
+            .dy,
+        lessThan(tester.getTopLeft(find.byType(AppBottomNavigation)).dy),
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     }
@@ -124,6 +131,7 @@ Widget _app(CartProvider cart, ApiService api, {double textScale = 1}) {
             textScaler: TextScaler.linear(textScale),
           ),
           child: Scaffold(
+            extendBody: true,
             body: CartScreen(apiService: api),
             bottomNavigationBar: AppBottomNavigation(
               index: 1,
