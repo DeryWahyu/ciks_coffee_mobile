@@ -8,6 +8,7 @@ class ProductModel {
   final String? categoryName;
   final bool isCoffee;
   final bool isAvailable;
+  final Map<String, int>? stockQuantities;
 
   ProductModel({
     required this.id,
@@ -19,6 +20,7 @@ class ProductModel {
     this.categoryName,
     this.isCoffee = false,
     this.isAvailable = true,
+    this.stockQuantities,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -37,10 +39,40 @@ class ProductModel {
       categoryName: category?['name'],
       isCoffee: categorySlug == 'coffee',
       isAvailable: json['is_available'] ?? true,
+      stockQuantities: _parseStocks(json['stock_quantities']),
     );
   }
 
   bool get hasLitePrice => priceLite != null;
+
+  static Map<String, int>? _parseStocks(dynamic value) {
+    if (value is! Map) return null;
+    return Map.unmodifiable(
+      value.map((key, count) {
+        final quantity = int.tryParse(count.toString()) ?? 0;
+        return MapEntry(key.toString(), quantity < 0 ? 0 : quantity);
+      }),
+    );
+  }
+
+  int? stockFor(String? variant) {
+    if (!isAvailable) return 0;
+    if (isCoffee) {
+      if (variant != 'base' && variant != 'lite') return 0;
+      if (variant == 'lite' && !hasLitePrice) return 0;
+    } else if (variant != null) {
+      return 0;
+    }
+    return stockQuantities?[isCoffee ? variant : 'default'] ??
+        (stockQuantities == null ? null : 0);
+  }
+
+  bool get hasStock =>
+      isAvailable &&
+      (isCoffee
+          ? (stockFor('base') ?? 1) > 0 ||
+                (hasLitePrice && (stockFor('lite') ?? 1) > 0)
+          : (stockFor(null) ?? 1) > 0);
 
   double getPrice(String? variant) {
     if (variant == 'lite' && priceLite != null) {
@@ -60,6 +92,7 @@ class ProductModel {
       'categoryName': categoryName,
       'isCoffee': isCoffee,
       'is_available': isAvailable,
+      'stock_quantities': stockQuantities,
     };
   }
 
@@ -76,6 +109,7 @@ class ProductModel {
       categoryName: json['categoryName'],
       isCoffee: json['isCoffee'] ?? false,
       isAvailable: json['is_available'] ?? true,
+      stockQuantities: _parseStocks(json['stock_quantities']),
     );
   }
 }

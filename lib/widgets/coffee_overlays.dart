@@ -130,7 +130,7 @@ class CoffeeOptionTile extends StatelessWidget {
   final String subtitle;
   final String value;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -142,55 +142,58 @@ class CoffeeOptionTile extends StatelessWidget {
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, size: 28, color: CoffeeColors.ink),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'CiksSans',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: CoffeeColors.ink,
+      child: Opacity(
+        opacity: onTap == null ? 0.45 : 1,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 28, color: CoffeeColors.ink),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: CoffeeColors.ink,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontFamily: 'CiksSans',
-                      fontSize: 12,
-                      height: 1.5,
-                      color: CoffeeColors.muted,
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 12,
+                        height: 1.5,
+                        color: CoffeeColors.muted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontFamily: 'CiksSans',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: CoffeeColors.ink,
+                    const SizedBox(height: 8),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: CoffeeColors.ink,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 21,
-              color: CoffeeColors.muted,
-            ),
-          ],
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 21,
+                color: CoffeeColors.muted,
+              ),
+            ],
+          ),
         ),
       ),
     ),

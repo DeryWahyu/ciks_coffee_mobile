@@ -150,6 +150,24 @@ class _FakeApi extends ApiService {
   int checkoutCalls = 0;
 
   @override
+  Future<Map<String, dynamic>> getProducts({
+    int? categoryId,
+    String? search,
+  }) async => {
+    'success': true,
+    'data': [
+      {
+        'id': 1,
+        'name': 'Kopi Susu Gula Aren',
+        'price': 24000,
+        'category': {'slug': 'coffee'},
+        'is_available': true,
+        'stock_quantities': {'base': 10, 'lite': 0},
+      },
+    ],
+  };
+
+  @override
   Future<Map<String, dynamic>> getQrisImage() async => {
     'success': false,
     'message': 'QRIS belum tersedia.',

@@ -1,24 +1,26 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/table_layout_model.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/coffee_overlays.dart';
+import '../widgets/floor_plan_view.dart';
 
 class TableAvailabilityScreen extends StatefulWidget {
   const TableAvailabilityScreen({
     super.key,
     this.apiService,
-    this.pollingInterval = const Duration(seconds: 15),
+    this.pollingInterval = const Duration(seconds: 8),
+    this.backgroundImageProvider,
   });
 
   final ApiService? apiService;
   final Duration pollingInterval;
+  final ImageProvider? backgroundImageProvider;
 
   @override
   State<TableAvailabilityScreen> createState() =>
@@ -27,18 +29,26 @@ class TableAvailabilityScreen extends StatefulWidget {
 
 class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     with WidgetsBindingObserver {
-  static const _espresso = Color(0xFF2C1810);
-  static const _brown = Color(0xFF5D3A1A);
-  static const _cream = Color(0xFFF8F1E8);
-
   late final ApiService _apiService;
+  final _transform = TransformationController();
+  final _visibleLayout = ValueNotifier<TableLayoutData?>(null);
   Timer? _pollingTimer;
   TableLayoutData? _data;
   String? _errorMessage;
-  bool _isLoading = true;
-  bool _isRefreshing = false;
-  bool _isRequestInFlight = false;
+  bool _isLoading = true, _isRefreshing = false, _isRequestInFlight = false;
   DateTime? _lastRefreshedAt;
+  Size _viewportSize = Size.zero;
+
+  bool get _english => context.read<LanguageProvider?>()?.isEnglish == true;
+  String _text(String id, String en) => _english ? en : id;
+  String _status(String value) => _english
+      ? switch (value) {
+          'available' => 'Available',
+          'occupied' => 'Occupied',
+          'reserved' => 'Reserved',
+          _ => 'Unavailable',
+        }
+      : tableStatusLabel(value);
 
   @override
   void initState() {
@@ -52,7 +62,9 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopPolling();
+    _pollingTimer?.cancel();
+    _transform.dispose();
+    _visibleLayout.dispose();
     super.dispose();
   }
 
@@ -61,83 +73,92 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
     if (state == AppLifecycleState.resumed) {
       _loadLayout(silent: _data != null);
       _startPolling();
-      return;
+    } else {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
     }
-
-    _stopPolling();
   }
 
   void _startPolling() {
-    if (_pollingTimer != null) return;
-    _pollingTimer = Timer.periodic(widget.pollingInterval, (_) {
-      _loadLayout(silent: true);
-    });
-  }
-
-  void _stopPolling() {
-    _pollingTimer?.cancel();
-    _pollingTimer = null;
+    _pollingTimer ??= Timer.periodic(
+      widget.pollingInterval,
+      (_) => _loadLayout(silent: true),
+    );
   }
 
   Future<void> _loadLayout({bool silent = false}) async {
     if (_isRequestInFlight) return;
     _isRequestInFlight = true;
-
-    if (mounted && !silent) {
+    if (!silent && mounted) {
       setState(() {
         _isLoading = _data == null;
         _isRefreshing = _data != null;
         _errorMessage = null;
       });
     }
-
-    final result = await _apiService.getTableLayout();
-    _isRequestInFlight = false;
-    if (!mounted) return;
-
-    if (result['success'] == true && result['data'] is TableLayoutData) {
-      setState(() {
-        _data = result['data'] as TableLayoutData;
-        _errorMessage = null;
-        _isLoading = false;
-        _isRefreshing = false;
-        _lastRefreshedAt = _jakartaNow();
-      });
-      return;
+    try {
+      final result = await _apiService.getTableLayout();
+      if (!mounted) return;
+      if (result['success'] == true && result['data'] is TableLayoutData) {
+        final data = result['data'] as TableLayoutData;
+        setState(() {
+          _data = data;
+          _lastRefreshedAt = DateTime.now().toUtc().add(
+            const Duration(hours: 7),
+          );
+          _errorMessage = null;
+        });
+        _visibleLayout.value = data;
+      } else {
+        setState(
+          () => _errorMessage =
+              result['message']?.toString() ?? 'Denah belum dapat dimuat.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _errorMessage = _text(
+            'Koneksi terputus. Silakan coba lagi.',
+            'Connection lost. Please try again.',
+          ),
+        );
+      }
+    } finally {
+      _isRequestInFlight = false;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+      }
     }
-
-    setState(() {
-      _errorMessage =
-          result['message']?.toString() ?? 'Denah meja belum dapat dimuat.';
-      _isLoading = false;
-      _isRefreshing = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LanguageProvider?>();
     final data = _data;
-    final lang = Provider.of<LanguageProvider?>(context);
     return Scaffold(
-      backgroundColor: _cream,
+      backgroundColor: FloorPlanPalette.cream,
       appBar: AppBar(
-        backgroundColor: _cream,
-        foregroundColor: _espresso,
+        backgroundColor: FloorPlanPalette.cream,
+        foregroundColor: FloorPlanPalette.ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
         title: Text(
-          lang?.tr('Ketersediaan meja') ?? 'Ketersediaan meja',
-          style: GoogleFonts.poppins(
-            color: _espresso,
+          _text('Ketersediaan meja', 'Table availability'),
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
         actions: [
           IconButton(
-            tooltip: lang?.tr('Muat ulang') ?? 'Muat ulang',
-            onPressed: _isRefreshing ? null : () => _loadLayout(),
+            tooltip: _text('Muat ulang', 'Refresh'),
+            onPressed: _isLoading || _isRefreshing ? null : () => _loadLayout(),
             icon: _isRefreshing
                 ? const SizedBox(
                     width: 19,
@@ -149,1154 +170,563 @@ class _TableAvailabilityScreenState extends State<TableAvailabilityScreen>
         ],
       ),
       body: data == null
-          ? _buildInitialState(lang)
+          ? _initialState()
           : RefreshIndicator(
-              color: _brown,
+              color: FloorPlanPalette.ink,
               onRefresh: () => _loadLayout(),
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        _buildHero(data, lang),
-                        const SizedBox(height: 20),
-                        _buildMapCard(data, lang),
-                        const SizedBox(height: 20),
-                        _buildLegend(lang),
-                        const SizedBox(height: 20),
-                        _buildAvailabilityList(data, lang),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildInitialState([LanguageProvider? lang]) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: _brown));
-    }
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFEDE9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.table_restaurant_outlined,
-                color: Color(0xFFD9634D),
-                size: 34,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              lang?.tr('Denah belum dapat dimuat') ?? 'Denah belum dapat dimuat',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                color: _espresso,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              _errorMessage ??
-                  (lang?.tr('Silakan coba lagi dalam beberapa saat.') ??
-                      'Silakan coba lagi dalam beberapa saat.'),
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                color: _espresso.withValues(alpha: 0.58),
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _loadLayout,
-              style: FilledButton.styleFrom(
-                backgroundColor: _brown,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-              ),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(lang?.tr('Coba lagi') ?? 'Coba lagi'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHero(TableLayoutData data, [LanguageProvider? lang]) {
-    final summary = data.summary;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3D2517), Color(0xFF805434)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: _brown.withValues(alpha: 0.24),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: -30,
-            top: -35,
-            child: Container(
-              width: 155,
-              height: 155,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 45,
-            bottom: -45,
-            child: Container(
-              width: 115,
-              height: 115,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.event_seat_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        data.layout.name,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.poppins(color: Colors.white),
-                    children: [
-                      TextSpan(
-                        text: '${summary.available} ',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      TextSpan(
-                        text: lang?.tr('meja tersedia') ?? 'meja tersedia',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.86),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${lang?.tr('dari') ?? 'dari'} ${summary.total} ${lang?.tr('meja yang sedang ditampilkan') ?? 'meja yang sedang ditampilkan'}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  height: 7,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: FractionallySizedBox(
-                    widthFactor: summary.total == 0
-                        ? 0
-                        : summary.available / summary.total,
-                    alignment: Alignment.centerLeft,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(color: Color(0xFF91DDC5)),
-                    ),
-                  ),
-                ),
-                if (_lastRefreshedAt != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    '${lang?.tr('Diperbarui') ?? 'Diperbarui'} ${DateFormat('HH:mm').format(_lastRefreshedAt!)} - ${lang?.tr('otomatis setiap 15 detik') ?? 'otomatis setiap 15 detik'}',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withValues(alpha: 0.62),
-                      fontSize: 9.5,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMapCard(TableLayoutData data, [LanguageProvider? lang]) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE8DCD2)),
-        boxShadow: [
-          BoxShadow(
-            color: _espresso.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        lang?.tr('Denah ketersediaan') ?? 'Denah ketersediaan',
-                        style: GoogleFonts.poppins(
-                          color: _espresso,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        lang?.tr('Ketuk meja untuk melihat detail status.') ??
-                            'Ketuk meja untuk melihat detail status.',
-                        style: GoogleFonts.poppins(
-                          color: _espresso.withValues(alpha: 0.52),
-                          fontSize: 10.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5EDE6),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: const Icon(
-                    Icons.pinch_rounded,
-                    color: Color(0xFF805434),
-                    size: 17,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final canvasHeight =
-                    width *
-                    (data.layout.canvasHeight / data.layout.canvasWidth);
-                return InteractiveViewer(
-                  minScale: 0.9,
-                  maxScale: 3.2,
-                  boundaryMargin: const EdgeInsets.all(36),
-                  child: SizedBox(
-                    width: width,
-                    height: canvasHeight,
-                    child: _buildFloorCanvas(data, width, canvasHeight),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFloorCanvas(TableLayoutData data, double width, double height) {
-    final children = <Widget>[
-      Positioned.fill(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F1E8),
-            border: Border.all(color: const Color(0xFFE1D6CF)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: CustomPaint(
-              foregroundPainter: data.layout.showGrid
-                  ? const _FloorGridPainter()
-                  : null,
-              child: const DecoratedBox(
-                decoration: BoxDecoration(color: Color(0x80FFFFFF)),
-                child: SizedBox.expand(),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ];
-
-    for (final element in data.layout.backgroundElements) {
-      children.add(_buildBackgroundElement(element, width, height));
-    }
-
-    for (final table in data.tables) {
-      children.add(_buildTableMarker(table, width, height));
-    }
-
-    return Stack(clipBehavior: Clip.hardEdge, children: children);
-  }
-
-  Widget _buildBackgroundElement(
-    LayoutBackgroundElement element,
-    double width,
-    double height,
-  ) {
-    final style = _backgroundStyleFor(element.type);
-    final isWindow = element.type == 'window';
-    return Positioned(
-      left: element.positionX / 100 * width,
-      top: element.positionY / 100 * height,
-      child: FractionalTranslation(
-        translation: const Offset(-0.5, -0.5),
-        child: Container(
-          constraints: BoxConstraints(
-            minWidth: isWindow ? 22 : style.minWidth,
-            minHeight: isWindow ? 72 : style.minHeight,
-          ),
-          padding: isWindow
-              ? const EdgeInsets.symmetric(horizontal: 4, vertical: 6)
-              : style.padding,
-          decoration: BoxDecoration(
-            color: style.background,
-            border: Border.all(color: style.border),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: element.type == 'counter'
-                ? [
-                    BoxShadow(
-                      color: _espresso.withValues(alpha: 0.18),
-                      blurRadius: 7,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Center(
-            child: isWindow
-                ? RotatedBox(
-                    quarterTurns: 3,
-                    child: Text(
-                      element.label,
-                      style: GoogleFonts.poppins(
-                        color: style.foreground,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                : Text(
-                    element.label,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: style.foreground,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableMarker(
-    CoffeeTableModel table,
-    double width,
-    double height,
-  ) {
-    final statusStyle = _statusStyleFor(table.status);
-    final tableRadius = _tableBorderRadius(table.shape);
-    final tableWidth = table.width / 100 * width;
-    final tableHeight = table.height / 100 * height;
-    final smallestTableSide = math.min(tableWidth, tableHeight);
-    final codeFontSize = math.max(3.0, math.min(7.2, smallestTableSide * 0.19));
-    final nameFontSize = math.max(2.4, math.min(5.0, smallestTableSide * 0.13));
-    final capacityFontSize = math.max(
-      2.3,
-      math.min(5.3, smallestTableSide * 0.14),
-    );
-    final iconSize = math.max(3.0, math.min(6.0, smallestTableSide * 0.15));
-    final contentPadding = math.max(
-      0.5,
-      math.min(3.0, smallestTableSide * 0.08),
-    );
-    final chairSize = math.max(3.4, math.min(15.0, smallestTableSide * 0.38));
-
-    return Positioned(
-      left: table.positionX / 100 * width,
-      top: table.positionY / 100 * height,
-      width: tableWidth,
-      height: tableHeight,
-      child: Transform.rotate(
-        angle: table.rotation * math.pi / 180,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ..._buildTableChairs(
-              table.capacity,
-              tableWidth,
-              tableHeight,
-              chairSize,
-            ),
-            Positioned.fill(
-              child: Semantics(
-                key: ValueKey('table-marker-${table.id}'),
-                button: true,
-                label:
-                    '${table.code}, ${table.name}, ${table.capacity} kursi, ${table.statusLabel}',
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _showTableDetail(table),
-                    borderRadius: tableRadius,
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: const [
-                            Color(0xFFC88955),
-                            Color(0xFFA55D35),
-                            Color(0xFF774027),
-                          ],
-                          stops: const [0, 0.56, 1],
-                        ),
-                        border: Border.all(color: statusStyle.color, width: 3),
-                        borderRadius: tableRadius,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _espresso.withValues(alpha: 0.22),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1000),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _intro(data),
+                          const SizedBox(height: 16),
+                          _summary(data),
+                          const SizedBox(height: 16),
+                          if (_errorMessage != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  fontFamily: 'CiksSans',
+                                  fontSize: 12,
+                                  color: CoffeeColors.danger,
+                                ),
+                              ),
+                            ),
+                          _mapCard(data),
+                          const SizedBox(height: 16),
+                          _tableList(data),
                         ],
                       ),
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Padding(
-                            padding: EdgeInsets.all(contentPadding),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  table.code,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: codeFontSize,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1,
-                                  ),
-                                ),
-                                SizedBox(
-                                  height: math.max(0.25, nameFontSize * 0.12),
-                                ),
-                                Text(
-                                  table.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white.withValues(alpha: 0.92),
-                                    fontSize: nameFontSize,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1,
-                                  ),
-                                ),
-                                SizedBox(
-                                  height: math.max(
-                                    0.25,
-                                    capacityFontSize * 0.12,
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.person_rounded,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.9,
-                                      ),
-                                      size: iconSize,
-                                    ),
-                                    Text(
-                                      '${table.capacity}',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
-                                        fontSize: capacityFontSize,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
-  List<Widget> _buildTableChairs(
-    int capacity,
-    double tableWidth,
-    double tableHeight,
-    double chairSize,
-  ) {
-    final seatCount = capacity.clamp(1, 20).toInt();
-    return List.generate(seatCount, (index) {
-      final angle = (math.pi * 2 * index) / seatCount - math.pi / 2;
-      final x = tableWidth / 2 + math.cos(angle) * tableWidth * 0.76;
-      final y = tableHeight / 2 + math.sin(angle) * tableHeight * 0.84;
-      return Positioned(
-        left: x - chairSize / 2,
-        top: y - chairSize * 0.66,
-        child: Transform.rotate(
-          angle: angle + math.pi / 2,
-          child: SizedBox(
-            width: chairSize,
-            height: chairSize * 1.32,
-            child: Stack(
-              clipBehavior: Clip.none,
+  Widget _initialState() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: _isLoading
+          ? const CircularProgressIndicator(color: FloorPlanPalette.ink)
+          : Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Positioned(
-                  left: chairSize * 0.04,
-                  top: 0,
-                  child: Container(
-                    width: chairSize * 0.92,
-                    height: chairSize * 0.5,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFE7AD71), Color(0xFF8F4B2C)],
-                      ),
-                      border: Border.all(
-                        color: const Color(0xFF64371F),
-                        width: 1,
-                      ),
-                      borderRadius: BorderRadius.circular(chairSize * 0.2),
-                    ),
+                const Icon(
+                  Icons.table_restaurant_outlined,
+                  color: FloorPlanPalette.muted,
+                  size: 40,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _text(
+                    'Denah belum dapat dimuat',
+                    'Floor plan could not load',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'CiksSans',
+                    fontWeight: FontWeight.w700,
+                    color: FloorPlanPalette.ink,
                   ),
                 ),
-                Positioned(
-                  left: chairSize * 0.1,
-                  top: chairSize * 0.46,
-                  child: Container(
-                    width: chairSize * 0.8,
-                    height: chairSize * 0.38,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFF0C288), Color(0xFFAE6439)],
-                      ),
-                      border: Border.all(
-                        color: const Color(0xFF64371F),
-                        width: 1,
-                      ),
-                      borderRadius: BorderRadius.circular(chairSize * 0.12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _espresso.withValues(alpha: 0.2),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage ?? '',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'CiksSans',
+                    color: FloorPlanPalette.muted,
                   ),
                 ),
-                Positioned(
-                  left: chairSize * 0.2,
-                  top: chairSize * 0.82,
-                  child: SizedBox(
-                    width: chairSize * 0.6,
-                    height: chairSize * 0.36,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(
-                        2,
-                        (_) => Container(
-                          width: chairSize * 0.1,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF64371F),
-                            borderRadius: BorderRadius.circular(
-                              chairSize * 0.05,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                CoffeeButton(
+                  label: _text('Coba lagi', 'Try again'),
+                  onPressed: () => _loadLayout(),
                 ),
               ],
             ),
+    ),
+  );
+
+  Widget _intro(TableLayoutData data) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        _text('RUANG & OPERASIONAL', 'SPACE & AVAILABILITY'),
+        style: const TextStyle(
+          fontFamily: 'CiksSans',
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1,
+          color: FloorPlanPalette.muted,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        data.layout.name,
+        style: const TextStyle(
+          fontFamily: 'CiksSans',
+          fontWeight: FontWeight.w700,
+          fontSize: 24,
+          color: FloorPlanPalette.ink,
+        ),
+      ),
+      if (_lastRefreshedAt != null) ...[
+        const SizedBox(height: 5),
+        Text(
+          '${_text('Diperbarui', 'Updated')} ${DateFormat('HH:mm').format(_lastRefreshedAt!)} · ${_text('Otomatis', 'Automatic updates')}',
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 11,
+            color: FloorPlanPalette.muted,
           ),
         ),
-      );
-    });
-  }
+      ],
+    ],
+  );
 
-  Widget _buildLegend([LanguageProvider? lang]) {
-    final items = [
-      _LegendItem(
-        lang?.tr('Tersedia') ?? 'Tersedia',
-        _statusStyleFor('available'),
-      ),
-      _LegendItem(
-        lang?.tr('Terisi') ?? 'Terisi',
-        _statusStyleFor('occupied'),
-      ),
-      _LegendItem(
-        lang?.tr('Dipesan') ?? 'Dipesan',
-        _statusStyleFor('reserved'),
-      ),
-      _LegendItem(
-        lang?.tr('Tidak tersedia') ?? 'Tidak tersedia',
-        _statusStyleFor('unavailable'),
-      ),
-    ];
+  BoxDecoration get _cardDecoration => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(14),
+    border: Border.all(color: FloorPlanPalette.line),
+  );
 
+  Widget _summary(TableLayoutData data) {
+    final counts = {
+      'available': data.summary.available,
+      'occupied': data.summary.occupied,
+      'reserved': data.summary.reserved,
+      'unavailable': data.summary.unavailable,
+    };
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8DCD2)),
-      ),
+      decoration: _cardDecoration,
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            lang?.tr('Keterangan status') ?? 'Keterangan status',
-            style: GoogleFonts.poppins(
-              color: _espresso,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            _text('Keterangan status', 'Status legend'),
+            style: const TextStyle(
+              fontFamily: 'CiksSans',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: FloorPlanPalette.muted,
             ),
           ),
-          const SizedBox(height: 11),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: items
-                .map(
-                  (item) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: item.style.soft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: item.style.color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          item.label,
-                          style: GoogleFonts.poppins(
-                            color: item.style.color,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvailabilityList(
-    TableLayoutData data, [
-    LanguageProvider? lang,
-  ]) {
-    final rows = [
-      _AvailabilityRow(
-        lang?.tr('Tersedia') ?? 'Tersedia',
-        data.summary.available,
-        'available',
-      ),
-      _AvailabilityRow(
-        lang?.tr('Terisi') ?? 'Terisi',
-        data.summary.occupied,
-        'occupied',
-      ),
-      _AvailabilityRow(
-        lang?.tr('Dipesan') ?? 'Dipesan',
-        data.summary.reserved,
-        'reserved',
-      ),
-      _AvailabilityRow(
-        lang?.tr('Tidak tersedia') ?? 'Tidak tersedia',
-        data.summary.unavailable,
-        'unavailable',
-      ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE8DCD2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            lang?.tr('Ringkasan area') ?? 'Ringkasan area',
-            style: GoogleFonts.poppins(
-              color: _espresso,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 11),
-          ...rows.map((row) {
-            final style = _statusStyleFor(row.status);
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: style.color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      row.label,
-                      style: GoogleFonts.poppins(
-                        color: _espresso.withValues(alpha: 0.76),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${row.total} meja',
-                    style: GoogleFonts.poppins(
-                      color: _espresso,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  void _showTableDetail(CoffeeTableModel table) {
-    final lang = Provider.of<LanguageProvider?>(context, listen: false);
-    final statusStyle = _statusStyleFor(table.status);
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        top: false,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(26)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 16,
+            runSpacing: 12,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE5D8CE),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: statusStyle.soft,
-                      border: Border.all(color: statusStyle.color, width: 2),
-                      borderRadius: _tableBorderRadius(table.shape),
-                    ),
-                    child: Icon(
-                      Icons.table_restaurant_rounded,
-                      color: statusStyle.color,
-                      size: 25,
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          table.name,
-                          style: GoogleFonts.poppins(
-                            color: _espresso,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${lang?.tr('Kode') ?? 'Kode'} ${table.code}',
-                          style: GoogleFonts.poppins(
-                            color: _espresso.withValues(alpha: 0.52),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                    color: _espresso.withValues(alpha: 0.55),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: statusStyle.soft,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: statusStyle.color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Text(
-                      lang?.tr(table.statusLabel) ?? table.statusLabel,
-                      style: GoogleFonts.poppins(
-                        color: statusStyle.color,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-              _detailRow(
-                Icons.person_outline_rounded,
-                lang?.tr('Kapasitas') ?? 'Kapasitas',
-                '${table.capacity} ${lang?.tr('kursi') ?? 'kursi'}',
-              ),
-              if (table.statusUpdatedAt != null) ...[
-                const SizedBox(height: 10),
-                _detailRow(
-                  Icons.update_rounded,
-                  lang?.tr('Status diperbarui') ?? 'Status diperbarui',
-                  DateFormat(
-                    'dd MMM yyyy, HH:mm',
-                    lang?.isEnglish == true ? 'en_US' : 'id_ID',
-                  ).format(_toJakartaTime(table.statusUpdatedAt!)),
-                ),
-              ],
-              const SizedBox(height: 22),
+              _stat('Total', data.summary.total),
+              for (final entry in counts.entries)
+                _stat(_status(entry.key), entry.value, status: entry.key),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, int count, {String? status}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (status != null) ...[_dot(status), const SizedBox(width: 6)],
+      Flexible(
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 11,
+            color: FloorPlanPalette.muted,
+          ),
+        ),
+      ),
+      const SizedBox(width: 7),
+      Text(
+        '$count',
+        style: const TextStyle(
+          fontFamily: 'CiksSans',
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: FloorPlanPalette.ink,
+        ),
+      ),
+    ],
+  );
+
+  Widget _dot(String status) => Container(
+    width: 7,
+    height: 7,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: FloorPlanPalette.status(status),
+    ),
+  );
+
+  String? _backgroundUrl(FloorLayoutModel layout) {
+    final url = layout.backgroundImage?.url;
+    if (url == null) return null;
+    return Uri.parse('${_apiService.hostUrl}/').resolve(url).toString();
+  }
+
+  Widget _mapCard(TableLayoutData data) => Container(
+    decoration: _cardDecoration,
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 5,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
               Text(
-                lang?.tr(
-                      'Status meja diatur oleh karyawan dan dapat berubah sewaktu-waktu.',
-                    ) ??
-                    'Status meja diatur oleh karyawan dan dapat berubah sewaktu-waktu.',
-                style: GoogleFonts.poppins(
-                  color: _espresso.withValues(alpha: 0.48),
-                  fontSize: 10.5,
-                  height: 1.45,
+                _text('Denah kedai', 'Coffee shop floor plan'),
+                style: const TextStyle(
+                  fontFamily: 'CiksSans',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: FloorPlanPalette.ink,
+                ),
+              ),
+              Text(
+                _text('Tampak atas', 'Top view'),
+                style: const TextStyle(
+                  fontFamily: 'CiksSans',
+                  fontSize: 10,
+                  color: FloorPlanPalette.muted,
                 ),
               ),
             ],
           ),
         ),
+        const Divider(height: 1, thickness: 1, color: FloorPlanPalette.line),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final size = Size(
+              constraints.maxWidth,
+              constraints.maxWidth *
+                  data.layout.canvasHeight /
+                  data.layout.canvasWidth,
+            );
+            if (_viewportSize != size) {
+              final shouldReset = _viewportSize != Size.zero;
+              _viewportSize = size;
+              if (shouldReset) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _viewportSize == size) {
+                    _transform.value = Matrix4.identity();
+                  }
+                });
+              }
+            }
+            return SizedBox(
+              width: size.width,
+              height: size.height,
+              child: InteractiveViewer(
+                key: const ValueKey('floor-plan-viewer'),
+                transformationController: _transform,
+                minScale: 1,
+                maxScale: 4,
+                boundaryMargin: EdgeInsets.zero,
+                child: SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child: FloorPlanView(
+                    data: data,
+                    onTableTap: _showTableDetail,
+                    backgroundUrl: _backgroundUrl(data.layout),
+                    backgroundImageProvider: widget.backgroundImageProvider,
+                    english: _english,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const Divider(height: 1, thickness: 1, color: FloorPlanPalette.line),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 250),
+                child: Text(
+                  _text(
+                    'Ketuk meja untuk melihat detail status.',
+                    'Tap a table to see its status.',
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'CiksSans',
+                    fontSize: 10,
+                    color: FloorPlanPalette.muted,
+                  ),
+                ),
+              ),
+              ValueListenableBuilder<Matrix4>(
+                valueListenable: _transform,
+                builder: (context, matrix, _) {
+                  final scale = matrix.getMaxScaleOnAxis();
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        key: const ValueKey('floor-zoom-out'),
+                        tooltip: _text('Perkecil', 'Zoom out'),
+                        onPressed: scale <= 1.001 ? null : () => _zoom(.8),
+                        icon: const Icon(Icons.remove, size: 16),
+                      ),
+                      Text(
+                        '${(scale * 100).round()}%',
+                        style: const TextStyle(
+                          fontFamily: 'CiksSans',
+                          fontSize: 11,
+                          color: FloorPlanPalette.muted,
+                        ),
+                      ),
+                      IconButton(
+                        key: const ValueKey('floor-zoom-in'),
+                        tooltip: _text('Perbesar', 'Zoom in'),
+                        onPressed: scale >= 3.999 ? null : () => _zoom(1.25),
+                        icon: const Icon(Icons.add, size: 16),
+                      ),
+                      TextButton(
+                        key: const ValueKey('floor-zoom-fit'),
+                        onPressed: () => _transform.value = Matrix4.identity(),
+                        child: Text(
+                          _text('Pas', 'Fit'),
+                          style: const TextStyle(
+                            fontFamily: 'CiksSans',
+                            fontSize: 11,
+                            color: FloorPlanPalette.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  void _zoom(double factor) {
+    final old = _transform.value, scale = old.getMaxScaleOnAxis();
+    final next = (scale * factor).clamp(1.0, 4.0), ratio = next / scale;
+    final center = _viewportSize.center(Offset.zero);
+    final x = (center.dx - (center.dx - old.storage[12]) * ratio).clamp(
+      _viewportSize.width * (1 - next),
+      0.0,
+    );
+    final y = (center.dy - (center.dy - old.storage[13]) * ratio).clamp(
+      _viewportSize.height * (1 - next),
+      0.0,
+    );
+    _transform.value = Matrix4.diagonal3Values(next, next, 1)
+      ..setTranslationRaw(x, y, 0);
+  }
+
+  Widget _tableList(TableLayoutData data) => Container(
+    decoration: _cardDecoration,
+    child: Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: const ValueKey('table-list'),
+        title: Text(
+          _text('Daftar meja', 'Table list'),
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: FloorPlanPalette.ink,
+          ),
+        ),
+        subtitle: Text(
+          _text(
+            'Pilih meja untuk melihat detail.',
+            'Choose a table to see its details.',
+          ),
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 11,
+            color: FloorPlanPalette.muted,
+          ),
+        ),
+        children: data.tables.isEmpty
+            ? [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    _text(
+                      'Meja belum ditambahkan.',
+                      'No tables have been added.',
+                    ),
+                    style: const TextStyle(fontFamily: 'CiksSans'),
+                  ),
+                ),
+              ]
+            : [
+                for (final table in data.tables)
+                  ListTile(
+                    onTap: () => _showTableDetail(table),
+                    title: Text(
+                      '${table.code} · ${table.name}',
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 13,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${table.capacity} ${_text('kursi', 'seats')}',
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 11,
+                      ),
+                    ),
+                    trailing: Semantics(
+                      label: _status(table.status),
+                      child: _dot(table.status),
+                    ),
+                  ),
+              ],
+      ),
+    ),
+  );
+
+  void _showTableDetail(CoffeeTableModel table) {
+    showCoffeeSheet<void>(
+      context: context,
+      builder: (context) => ValueListenableBuilder<TableLayoutData?>(
+        valueListenable: _visibleLayout,
+        builder: (context, data, _) {
+          CoffeeTableModel? current;
+          for (final candidate in data?.tables ?? <CoffeeTableModel>[]) {
+            if (candidate.id == table.id) {
+              current = candidate;
+              break;
+            }
+          }
+          return CoffeeSheet(
+            title: current?.name ?? table.name,
+            subtitle: '${_text('Kode', 'Code')} ${table.code}',
+            dismissLabel: _text('Tutup', 'Close'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (current == null)
+                  Text(
+                    _text(
+                      'Meja ini sudah tidak tersedia.',
+                      'This table is no longer available.',
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'CiksSans',
+                      color: FloorPlanPalette.muted,
+                    ),
+                  )
+                else ...[
+                  _detailRow(
+                    _text('Status', 'Status'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _dot(current.status),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _status(current.status),
+                            style: const TextStyle(
+                              fontFamily: 'CiksSans',
+                              fontWeight: FontWeight.w600,
+                              color: FloorPlanPalette.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _detailRow(
+                    _text('Kapasitas', 'Capacity'),
+                    Text(
+                      '${current.capacity} ${_text('kursi', 'seats')}',
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        color: FloorPlanPalette.ink,
+                      ),
+                    ),
+                  ),
+                  _detailRow(
+                    _text('Bentuk', 'Shape'),
+                    Text(
+                      switch (current.shape) {
+                        'round' => _text('Bulat', 'Round'),
+                        'rectangle' => _text('Persegi panjang', 'Rectangle'),
+                        _ => _text('Persegi', 'Square'),
+                      },
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        color: FloorPlanPalette.ink,
+                      ),
+                    ),
+                  ),
+                  if (current.statusUpdatedAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        '${_text('Diperbarui', 'Updated')} ${DateFormat('dd/MM/yyyy HH:mm').format(current.statusUpdatedAt!.toUtc().add(const Duration(hours: 7)))}',
+                        style: const TextStyle(
+                          fontFamily: 'CiksSans',
+                          fontSize: 11,
+                          color: FloorPlanPalette.muted,
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
-    return Row(
+  Widget _detailRow(String label, Widget value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: const Color(0xFF805434), size: 18),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            color: _espresso.withValues(alpha: 0.56),
-            fontSize: 11,
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'CiksSans',
+              color: FloorPlanPalette.muted,
+            ),
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            color: _espresso,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        const SizedBox(width: 12),
+        Flexible(child: value),
       ],
-    );
-  }
-
-  BorderRadius _tableBorderRadius(String shape) {
-    switch (shape) {
-      case 'round':
-        return BorderRadius.circular(999);
-      case 'rectangle':
-        return BorderRadius.circular(8);
-      default:
-        return BorderRadius.circular(11);
-    }
-  }
-
-  DateTime _jakartaNow() =>
-      DateTime.now().toUtc().add(const Duration(hours: 7));
-
-  DateTime _toJakartaTime(DateTime value) =>
-      value.toUtc().add(const Duration(hours: 7));
-
-  _TableStatusStyle _statusStyleFor(String status) {
-    switch (status) {
-      case 'available':
-        return const _TableStatusStyle(Color(0xFF16856F), Color(0xFFE8F7F1));
-      case 'occupied':
-        return const _TableStatusStyle(Color(0xFFD9634D), Color(0xFFFFF0ED));
-      case 'reserved':
-        return const _TableStatusStyle(Color(0xFFBD7A24), Color(0xFFFFF6E5));
-      default:
-        return const _TableStatusStyle(Color(0xFF7A818C), Color(0xFFF1F3F5));
-    }
-  }
-
-  _BackgroundStyle _backgroundStyleFor(String type) {
-    switch (type) {
-      case 'counter':
-        return const _BackgroundStyle(
-          foreground: Colors.white,
-          background: Color(0xFF5D4037),
-          border: Color(0xFF5D4037),
-          minWidth: 66,
-          minHeight: 24,
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        );
-      case 'window':
-        return const _BackgroundStyle(
-          foreground: Color(0xFF52728C),
-          background: Color(0xFFE5F4FA),
-          border: Color(0xFF8BB9D3),
-          minWidth: 40,
-          minHeight: 24,
-          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-        );
-      case 'entrance':
-        return const _BackgroundStyle(
-          foreground: Color(0xFF72552E),
-          background: Color(0xFFFFF7E9),
-          border: Color(0xFFD3B27C),
-          minWidth: 60,
-          minHeight: 24,
-          padding: EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-        );
-      default:
-        return const _BackgroundStyle(
-          foreground: Color(0xFF705A52),
-          background: Color(0xFFFFFFFF),
-          border: Color(0xFFB8A69A),
-          minWidth: 44,
-          minHeight: 22,
-          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        );
-    }
-  }
-}
-
-class _TableStatusStyle {
-  const _TableStatusStyle(this.color, this.soft);
-
-  final Color color;
-  final Color soft;
-}
-
-class _BackgroundStyle {
-  const _BackgroundStyle({
-    required this.foreground,
-    required this.background,
-    required this.border,
-    required this.minWidth,
-    required this.minHeight,
-    required this.padding,
-  });
-
-  final Color foreground;
-  final Color background;
-  final Color border;
-  final double minWidth;
-  final double minHeight;
-  final EdgeInsets padding;
-}
-
-class _LegendItem {
-  const _LegendItem(this.label, this.style);
-
-  final String label;
-  final _TableStatusStyle style;
-}
-
-class _AvailabilityRow {
-  const _AvailabilityRow(this.label, this.total, this.status);
-
-  final String label;
-  final int total;
-  final String status;
-}
-
-class _FloorGridPainter extends CustomPainter {
-  const _FloorGridPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF8D6E63).withValues(alpha: 0.09)
-      ..strokeWidth = 1;
-    final verticalStep = size.width * 0.05;
-    final horizontalStep = size.height * 0.075;
-
-    for (var x = 0.0; x <= size.width; x += verticalStep) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = 0.0; y <= size.height; y += horizontalStep) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _FloorGridPainter oldDelegate) => false;
+    ),
+  );
 }

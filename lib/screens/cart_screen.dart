@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cart_item_model.dart';
+import '../models/product_model.dart';
 import '../providers/cart_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
@@ -37,10 +38,47 @@ class _CartScreenState extends State<CartScreen> {
     if (cart.isEmpty) return;
     _paymentSheetOpen = true;
     try {
+      final catalogue = await _apiService.getProducts();
+      if (!mounted) return;
+      if (catalogue['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              lang.isEnglish
+                  ? 'Stock could not be checked. Please try again.'
+                  : 'Stok belum dapat diperiksa. Silakan coba lagi.',
+            ),
+          ),
+        );
+        return;
+      }
+      cart.updateCatalogue(
+        (catalogue['data'] as List)
+            .map(
+              (row) =>
+                  ProductModel.fromJson(Map<String, dynamic>.from(row as Map)),
+            )
+            .toList(),
+        refreshPrices: true,
+      );
+      if (cart.hasStockConflict) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              lang.isEnglish
+                  ? 'Some items exceed available stock. Please review your cart.'
+                  : 'Ada produk yang habis atau jumlahnya melebihi stok. Periksa kembali keranjang.',
+            ),
+          ),
+        );
+        return;
+      }
+      final paymentItems = cart.toCheckoutItems();
+      final paymentTotal = _formatPrice(cart.totalPrice);
       final proof = await showCoffeeSheet<String>(
         context: context,
         builder: (_) => QrisPaymentSheet(
-          total: _formatPrice(cart.totalPrice),
+          total: paymentTotal,
           language: lang,
           apiService: _apiService,
         ),
@@ -49,7 +87,7 @@ class _CartScreenState extends State<CartScreen> {
       setState(() => _isCheckingOut = true);
       final result = await _apiService.checkout(
         paymentMethod: 'qris',
-        items: cart.toCheckoutItems(),
+        items: paymentItems,
         paymentProofPath: proof,
       );
       if (result['success'] == true) cart.clear();
@@ -256,6 +294,8 @@ class _CartScreenState extends State<CartScreen> {
     LanguageProvider lang,
   ) {
     final image = _apiService.getImageUrl(item.product.imageUrl ?? '');
+    final current = cart.currentProduct(item.product);
+    final stock = current == null ? 0 : current.stockFor(item.variant);
     return Container(
       key: ValueKey('cart-item-${item.uniqueKey}'),
       margin: const EdgeInsets.only(bottom: 12),
@@ -307,6 +347,32 @@ class _CartScreenState extends State<CartScreen> {
                         color: CoffeeColors.muted,
                       ),
                     ),
+                    if (stock != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        stock == 0
+                            ? (lang.isEnglish ? 'Sold out' : 'Stok habis')
+                            : (lang.isEnglish
+                                  ? 'Stock: $stock portions'
+                                  : 'Stok: $stock porsi'),
+                        style: const TextStyle(
+                          fontFamily: 'CiksSans',
+                          fontSize: 11,
+                          color: CoffeeColors.muted,
+                        ),
+                      ),
+                      if (item.quantity > stock)
+                        Text(
+                          lang.isEnglish
+                              ? 'Please reduce the quantity or remove this item.'
+                              : 'Kurangi jumlah atau hapus produk ini.',
+                          style: const TextStyle(
+                            fontFamily: 'CiksSans',
+                            fontSize: 11,
+                            color: CoffeeColors.danger,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -357,7 +423,12 @@ class _CartScreenState extends State<CartScreen> {
                       tooltip: lang.isEnglish
                           ? 'Increase quantity'
                           : 'Tambah jumlah',
-                      onPressed: _isCheckingOut
+                      onPressed:
+                          _isCheckingOut ||
+                              !cart.canAddItem(
+                                item.product,
+                                variant: item.variant,
+                              )
                           ? null
                           : () => cart.addItem(
                               item.product,
