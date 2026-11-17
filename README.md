@@ -2,6 +2,31 @@
 
 ## Cart and order confirmation
 
+The audit fixes use checkout protocol version 2. Deploy the matching web/API and
+additive checkout-reservation migration before distributing this APK. Old clients
+receive HTTP 426 at catalogue/payment preflight after the API upgrade. Coordinate
+the release while no customer is paying through an open legacy QRIS sheet.
+
+Before showing QRIS, the API locks the quoted price/recipe and reserves the whole
+cart's shared ingredients for 15 minutes. Closing the sheet preserves that payment
+session; explicit cancellation is for unpaid sessions. Expired/cancelled sessions
+hide the QR but still accept an already-paid proof for cashier review. Submitted
+proofs retain their reservation until verification or a recorded resolution.
+The cashier's refund action records a transfer already performed manually.
+
+Checkout retries recover the same payment/order. Basket IDs and persisted applied
+checkout IDs preserve newly added items and prevent double subtraction after an
+app restart. Server-recovered older payments leave a new local basket intact.
+Legacy stored baskets migrate when loaded/saved; logout or switching accounts
+clears both saved and in-memory basket state.
+
+Temporary startup/network failures retain valid credentials and provide retry;
+revoked credentials return to login. Late responses from a previous account are
+discarded. Order status polling is serialized, pauses in the background, and uses
+response versions; history refreshes have the same stale-response protection.
+Customer history includes rejected/refunded orders with cashier notes, while only
+picked-up orders contribute to the displayed purchase total.
+
 The cart uses a single checkout panel above the safe navigation area. It shows
 the QRIS method, total, and a full-width payment button, with a scrollable layout
 for short screens and larger text. Cancelling the QRIS sheet retains the cart;

@@ -201,6 +201,17 @@ class OrderDetailsSheet extends StatelessWidget {
               ),
             ),
           ],
+          if (order.paymentResolutionNote != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${english ? 'Cashier note' : 'Catatan kasir'}: ${order.paymentResolutionNote}',
+              style: const TextStyle(
+                fontFamily: 'CiksSans',
+                fontSize: 12,
+                color: CoffeeColors.muted,
+              ),
+            ),
+          ],
         ],
       ),
     );

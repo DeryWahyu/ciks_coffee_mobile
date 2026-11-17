@@ -15,14 +15,18 @@ import '../services/push_notification_service.dart';
 import '../screens/history_screen.dart';
 
 class OrderStatusScreen extends StatefulWidget {
-  const OrderStatusScreen({super.key});
+  const OrderStatusScreen({super.key, this.apiService});
+  final ApiService? apiService;
 
   @override
   State<OrderStatusScreen> createState() => _OrderStatusScreenState();
 }
 
-class _OrderStatusScreenState extends State<OrderStatusScreen> {
-  final ApiService _apiService = ApiService();
+class _OrderStatusScreenState extends State<OrderStatusScreen>
+    with WidgetsBindingObserver {
+  late final ApiService _apiService = widget.apiService ?? ApiService();
+  int _requestVersion = 0;
+  bool _pollingInFlight = false;
   List<OrderModel> _orders = [];
   final Set<int> _confirmingPickupIds = {};
   bool _isLoading = true;
@@ -34,41 +38,59 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchActiveOrders();
     _pushUpdateSubscription = PushNotificationService
         .instance
         .orderStatusUpdates
-        .listen((_) => _fetchActiveOrders(showLoading: false));
+        .listen((_) {
+          _fetchActiveOrders(showLoading: false);
+          globalHistoryRefresh.value++;
+        });
     _startPolling();
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _pushUpdateSubscription?.cancel();
     super.dispose();
   }
 
   void _startPolling() {
+    _pollingTimer?.cancel();
     // Poll every 5 seconds to check for order updates
     _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _pollActiveOrders();
     });
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchActiveOrders(showLoading: false);
+      _startPolling();
+    } else {
+      _pollingTimer?.cancel();
+      _requestVersion++;
+    }
+  }
+
   Future<void> _fetchActiveOrders({bool showLoading = true}) async {
+    final version = ++_requestVersion;
     if (showLoading) {
       setState(() => _isLoading = true);
     }
     final result = await _apiService.getActiveOrders();
-    if (mounted) {
+    if (mounted && version == _requestVersion) {
       setState(() {
-        if (showLoading) {
-          _isLoading = false;
-        }
+        _isLoading = false;
         if (result['success']) {
           final data = result['data'] as List<dynamic>;
-          _orders = data.map((o) => OrderModel.fromJson(o)).toList();
+          final next = data.map((o) => OrderModel.fromJson(o)).toList();
+          _refreshHistoryForRemovedOrders(next);
+          _orders = next;
 
           for (var order in _orders) {
             _previousStatuses[order.id] = order.status;
@@ -84,12 +106,21 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   Future<void> _pollActiveOrders() async {
-    final result = await _apiService.getActiveOrders();
-    if (!mounted) return;
+    if (_pollingInFlight || _isLoading || !mounted) return;
+    _pollingInFlight = true;
+    final version = ++_requestVersion;
+    late Map<String, dynamic> result;
+    try {
+      result = await _apiService.getActiveOrders();
+    } finally {
+      _pollingInFlight = false;
+    }
+    if (!mounted || version != _requestVersion) return;
 
     if (result['success']) {
       final data = result['data'] as List<dynamic>;
       final newOrders = data.map((o) => OrderModel.fromJson(o)).toList();
+      _refreshHistoryForRemovedOrders(newOrders);
 
       bool statusChanged = false;
 
@@ -131,6 +162,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       setState(() {
         _orders = newOrders;
       });
+    }
+  }
+
+  void _refreshHistoryForRemovedOrders(List<OrderModel> next) {
+    final activeIds = next.map((order) => order.id).toSet();
+    if (_orders.any((order) => !activeIds.contains(order.id))) {
+      globalHistoryRefresh.value++;
     }
   }
 
@@ -551,6 +589,18 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
 
           // Progress Stepper
+          if (order.paymentReviewReason != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                order.paymentReviewReason!,
+                style: const TextStyle(
+                  fontFamily: 'CiksSans',
+                  fontSize: 12,
+                  color: CoffeeColors.muted,
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,11 +14,19 @@ class QrisPaymentSheet extends StatefulWidget {
     required this.total,
     required this.language,
     required this.apiService,
+    this.expiresAt,
+    this.onCancel,
+    this.items = const [],
+    this.allowPayment = true,
   });
 
   final String total;
   final LanguageProvider language;
   final ApiService apiService;
+  final DateTime? expiresAt;
+  final Future<bool> Function()? onCancel;
+  final List<Map<String, dynamic>> items;
+  final bool allowPayment;
 
   @override
   State<QrisPaymentSheet> createState() => _QrisPaymentSheetState();
@@ -28,6 +37,60 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
   File? _proof;
   bool _picking = false;
   String? _error;
+  Timer? _expiryTimer;
+  bool _cancelling = false;
+  bool get _expired =>
+      !widget.allowPayment ||
+      (widget.expiresAt != null && !widget.expiresAt!.isAfter(DateTime.now()));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.expiresAt != null) {
+      _expiryTimer = Timer(widget.expiresAt!.difference(DateTime.now()), () {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _cancel() async {
+    if (_cancelling) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => CoffeeDialog(
+        title: 'Batalkan pembayaran?',
+        message:
+            'Pilih batal hanya jika kamu belum membayar. Jika sudah membayar, unggah bukti agar kasir dapat memeriksanya.',
+        actions: [
+          CoffeeButton(
+            label: 'Saya belum membayar, batalkan',
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+          CoffeeButton(
+            label: 'Kembali',
+            secondary: true,
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _cancelling = true);
+    final cancelled = await widget.onCancel!();
+    if (!mounted) return;
+    setState(() => _cancelling = false);
+    if (cancelled) {
+      Navigator.of(context).pop('');
+    } else {
+      setState(() => _error = 'Pembatalan belum berhasil. Silakan coba lagi.');
+    }
+  }
 
   Future<void> _pickProof() async {
     if (_picking) return;
@@ -72,7 +135,7 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
                   : 'Pilih bukti pembayaran dahulu')
             : (english ? 'Send order' : 'Kirim Pesanan'),
         icon: Icons.arrow_forward_rounded,
-        onPressed: _proof == null || _picking
+        onPressed: _proof == null || _picking || _cancelling
             ? null
             : () => Navigator.of(context).pop(_proof!.path),
       ),
@@ -110,36 +173,62 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          FutureBuilder<Map<String, dynamic>>(
-            future: _qris,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const SizedBox(
-                  height: 208,
-                  child: Center(
-                    child: CircularProgressIndicator(color: CoffeeColors.ink),
-                  ),
-                );
-              }
-              final data = snapshot.data;
-              if (data?['success'] == true) {
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: CoffeeColors.border),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Image.network(
-                    data!['image_url'],
-                    height: 200,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, error, stack) => _qrisError(english),
-                  ),
-                );
-              }
-              return _qrisError(english);
-            },
-          ),
+          for (final item in widget.items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '${item['product_name'] ?? 'Produk'} × ${item['quantity']}',
+                style: const TextStyle(
+                  fontFamily: 'CiksSans',
+                  fontSize: 12,
+                  color: CoffeeColors.muted,
+                ),
+              ),
+            ),
+          if (widget.expiresAt != null) ...[
+            Text(
+              _expired
+                  ? 'Waktu pembayaran berakhir. Jangan lakukan pembayaran baru. Jika sudah membayar, unggah bukti untuk pemeriksaan kasir.'
+                  : 'Harga dikunci dan stok direservasi sampai ${widget.expiresAt!.toLocal().hour.toString().padLeft(2, '0')}:${widget.expiresAt!.toLocal().minute.toString().padLeft(2, '0')}.',
+              style: const TextStyle(
+                fontFamily: 'CiksSans',
+                fontSize: 12,
+                color: CoffeeColors.muted,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (!_expired)
+            FutureBuilder<Map<String, dynamic>>(
+              future: _qris,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const SizedBox(
+                    height: 208,
+                    child: Center(
+                      child: CircularProgressIndicator(color: CoffeeColors.ink),
+                    ),
+                  );
+                }
+                final data = snapshot.data;
+                if (data?['success'] == true) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: CoffeeColors.border),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Image.network(
+                      data!['image_url'],
+                      height: 200,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, error, stack) => _qrisError(english),
+                    ),
+                  );
+                }
+                return _qrisError(english);
+              },
+            ),
           const SizedBox(height: 20),
           Text(
             english ? 'Payment proof' : 'Bukti pembayaran',
@@ -230,6 +319,11 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
             ),
           ],
           const SizedBox(height: 16),
+          if (widget.onCancel != null)
+            TextButton(
+              onPressed: _cancelling ? null : _cancel,
+              child: const Text('Belum membayar? Batalkan sesi pembayaran'),
+            ),
           Text(
             english
                 ? 'Your payment proof will be reviewed by the cashier before your order is prepared.'

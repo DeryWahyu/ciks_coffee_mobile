@@ -24,6 +24,22 @@ class _CartScreenState extends State<CartScreen> {
   late final ApiService _apiService = widget.apiService ?? ApiService();
   bool _isCheckingOut = false;
   bool _paymentSheetOpen = false;
+  bool _hasPendingCheckout = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restorePending();
+  }
+
+  Future<void> _restorePending() async {
+    try {
+      final pending = await _apiService.pendingCheckout();
+      if (mounted) setState(() => _hasPendingCheckout = pending != null);
+    } catch (_) {
+      /* The checkout button retries when the connection is available. */
+    }
+  }
 
   String _formatPrice(double value) => NumberFormat.currency(
     locale: 'id_ID',
@@ -35,64 +51,138 @@ class _CartScreenState extends State<CartScreen> {
     if (_isCheckingOut || _paymentSheetOpen) return;
     final cart = context.read<CartProvider>();
     final lang = context.read<LanguageProvider>();
-    if (cart.isEmpty) return;
     _paymentSheetOpen = true;
     try {
-      final catalogue = await _apiService.getProducts();
+      final generation = cart.sessionGeneration;
+      await cart.ready;
+      final pending = await _apiService.pendingCheckout();
       if (!mounted) return;
-      if (catalogue['success'] != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              lang.isEnglish
-                  ? 'Stock could not be checked. Please try again.'
-                  : 'Stok belum dapat diperiksa. Silakan coba lagi.',
+      if (cart.isEmpty && pending == null) return;
+      if (pending == null) {
+        final catalogue = await _apiService.getProducts();
+        if (!mounted) return;
+        if (catalogue['success'] != true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                lang.isEnglish
+                    ? 'Stock could not be checked. Please try again.'
+                    : 'Stok belum dapat diperiksa. Silakan coba lagi.',
+              ),
             ),
-          ),
+          );
+          return;
+        }
+        cart.updateCatalogue(
+          (catalogue['data'] as List)
+              .map(
+                (row) => ProductModel.fromJson(
+                  Map<String, dynamic>.from(row as Map),
+                ),
+              )
+              .toList(),
+          refreshPrices: true,
         );
-        return;
+        if (cart.hasStockConflict) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                lang.isEnglish
+                    ? 'Some items exceed available stock. Please review your cart.'
+                    : 'Ada produk yang habis atau jumlahnya melebihi stok. Periksa kembali keranjang.',
+              ),
+            ),
+          );
+          return;
+        }
       }
-      cart.updateCatalogue(
-        (catalogue['data'] as List)
-            .map(
-              (row) =>
-                  ProductModel.fromJson(Map<String, dynamic>.from(row as Map)),
-            )
-            .toList(),
-        refreshPrices: true,
+      final prepared = await _apiService.prepareCheckout(
+        items: cart.toCheckoutItems(),
+        expectedTotal: cart.totalPrice,
+        pending: pending,
+        cartId: cart.basketId,
       );
-      if (cart.hasStockConflict) {
+      if (!mounted) return;
+      if (prepared['success'] != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              lang.isEnglish
-                  ? 'Some items exceed available stock. Please review your cart.'
-                  : 'Ada produk yang habis atau jumlahnya melebihi stok. Periksa kembali keranjang.',
+              prepared['message']?.toString() ??
+                  'Pembayaran belum dapat disiapkan.',
             ),
           ),
         );
         return;
       }
-      final paymentItems = cart.toCheckoutItems();
-      final paymentTotal = _formatPrice(cart.totalPrice);
+      final quote = Map<String, dynamic>.from(prepared['data']);
+      final paymentItems = (quote['items'] as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      if (quote['order'] is Map) {
+        cart.removePurchased(
+          paymentItems,
+          generation,
+          checkoutId: quote['id'],
+          removeFromCart:
+              quote['local_cart_id'] != null &&
+              quote['local_cart_id'] == cart.basketId,
+        );
+        final persisted = await cart.persist();
+        if (persisted) {
+          await _apiService.clearPendingCheckout(checkoutId: quote['id']);
+        }
+        if (mounted) setState(() => _hasPendingCheckout = !persisted);
+        if (mounted) await _showSuccessDialog({'order': quote['order']}, lang);
+        return;
+      }
+      final paymentTotal = _formatPrice(
+        double.parse(quote['total'].toString()),
+      );
+      setState(() => _hasPendingCheckout = true);
       final proof = await showCoffeeSheet<String>(
         context: context,
         builder: (_) => QrisPaymentSheet(
           total: paymentTotal,
           language: lang,
           apiService: _apiService,
+          expiresAt: DateTime.parse(quote['expires_at']),
+          items: paymentItems,
+          allowPayment: quote['can_pay'] == true,
+          onCancel: () async {
+            final cancelled = await _apiService.cancelCheckout(quote['id']);
+            if (cancelled && mounted) {
+              setState(() => _hasPendingCheckout = false);
+            }
+            return cancelled;
+          },
         ),
       );
-      if (!mounted || proof == null) return;
+      if (!mounted || proof == null || proof.isEmpty) return;
       setState(() => _isCheckingOut = true);
       final result = await _apiService.checkout(
         paymentMethod: 'qris',
         items: paymentItems,
         paymentProofPath: proof,
+        checkoutId: quote['id'],
       );
-      if (result['success'] == true) cart.clear();
+      if (result['success'] == true) {
+        cart.removePurchased(
+          paymentItems,
+          generation,
+          checkoutId: quote['id'],
+          removeFromCart:
+              quote['local_cart_id'] != null &&
+              quote['local_cart_id'] == cart.basketId,
+        );
+        final persisted = await cart.persist();
+        if (persisted) {
+          await _apiService.clearPendingCheckout(checkoutId: quote['id']);
+        }
+        if (mounted) setState(() => _hasPendingCheckout = !persisted);
+      }
       if (!mounted) return;
       if (result['success'] == true) {
+        setState(() => _isCheckingOut = false);
         await _showSuccessDialog(
           Map<String, dynamic>.from(result['data']),
           lang,
@@ -110,6 +200,16 @@ class _CartScreenState extends State<CartScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Pembayaran belum dapat diperiksa. Silakan coba lagi untuk melanjutkan sesi yang sama.',
             ),
           ),
         );
@@ -206,6 +306,28 @@ class _CartScreenState extends State<CartScreen> {
         bottom: false,
         child: Consumer<CartProvider>(
           builder: (context, cart, _) {
+            if (cart.isEmpty && _hasPendingCheckout) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Ada sesi pembayaran yang belum selesai.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      CoffeeButton(
+                        label: 'Lanjutkan pembayaran',
+                        onPressed: _checkout,
+                        loading: _isCheckingOut,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
             if (cart.isEmpty) return _emptyCart(lang);
             return LayoutBuilder(
               builder: (context, constraints) {

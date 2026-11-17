@@ -27,8 +27,42 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  late final StreamSubscription<void> _sessionSubscription;
+  bool _navigationPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionSubscription = ApiService.sessionEnded.listen((_) {
+      if (!mounted || _navigationPending) return;
+      final version = ApiService.sessionVersion;
+      _navigationPending = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigationPending = false;
+        if (!mounted || version != ApiService.sessionVersion) return;
+        unawaited(PushNotificationService.instance.onLoggedOut());
+        _navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _sessionSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +72,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
         title: 'Ciks Coffee',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -94,6 +129,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   final ApiService _apiService = ApiService();
   bool _isInitializing = true;
   bool _isAuthenticated = false;
+  bool _connectionUnavailable = false;
 
   @override
   void initState() {
@@ -102,6 +138,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initializeApp() async {
+    if (mounted) {
+      setState(() {
+        _isInitializing = true;
+        _connectionUnavailable = false;
+      });
+    }
     final startedAt = DateTime.now();
     var isAuthenticated = false;
 
@@ -109,14 +151,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final token = await _apiService.getToken();
 
     if (token != null) {
-      final isValid = await _apiService.validateToken();
-      isAuthenticated = isValid;
-      if (isValid) {
+      final status = await _apiService.validateSession();
+      isAuthenticated = status == SessionStatus.valid;
+      _connectionUnavailable = status == SessionStatus.unavailable;
+      if (isAuthenticated) {
         unawaited(
           PushNotificationService.instance.initializeForAuthenticatedUser(),
         );
       }
-      if (!isValid) {
+      if (status == SessionStatus.unauthenticated) {
         await PushNotificationService.instance.onLoggedOut();
         await _apiService.clearToken();
       }
@@ -139,6 +182,35 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     if (_isInitializing) {
       return const SplashScreen();
+    }
+
+    if (_connectionUnavailable) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    size: 42,
+                    color: CoffeeColors.muted,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Koneksi ke server belum tersedia. Sesi akunmu tetap tersimpan.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  CoffeeButton(label: 'Coba lagi', onPressed: _initializeApp),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     final openStatus = PushNotificationService.instance

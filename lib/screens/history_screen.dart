@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/order_dialogs.dart';
@@ -12,14 +13,16 @@ import '../providers/language_provider.dart';
 final ValueNotifier<int> globalHistoryRefresh = ValueNotifier<int>(0);
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.apiService});
+  final ApiService? apiService;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService = widget.apiService ?? ApiService();
+  int _requestVersion = 0;
   List<OrderModel> _orders = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -37,29 +40,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
-  void _fetchHistoryBackground() async {
-    final result = await _apiService.getOrderHistory();
-    if (mounted && result['success']) {
-      final data = result['data'] as List<dynamic>;
-      setState(() {
-        _orders = data.map((o) => OrderModel.fromJson(o)).toList();
-      });
-    }
+  void _fetchHistoryBackground() {
+    unawaited(_fetchHistory(showLoading: false));
   }
 
-  Future<void> _fetchHistory() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _fetchHistory({bool showLoading = true}) async {
+    final version = ++_requestVersion;
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
     final result = await _apiService.getOrderHistory();
-    if (mounted) {
+    if (mounted && version == _requestVersion) {
       setState(() {
         _isLoading = false;
         if (result['success']) {
+          _errorMessage = null;
           final data = result['data'] as List<dynamic>;
           _orders = data.map((o) => OrderModel.fromJson(o)).toList();
-        } else {
+        } else if (showLoading || _orders.isEmpty) {
           _errorMessage = result['message'];
         }
       });
@@ -197,7 +198,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                             ),
                             Text(
-                              'Total: ${_formatPrice(_orders.fold(0.0, (sum, o) => sum + o.total))}',
+                              '${lang.isEnglish ? 'Purchases' : 'Belanja'}: ${_formatPrice(_orders.where((o) => o.status == 'diambil').fold(0.0, (sum, o) => sum + o.total))}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: Colors.white.withValues(alpha: 0.7),
@@ -347,9 +348,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 color: const Color(0xFFE9F7ED),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(
-                Icons.check_circle,
-                color: Color(0xFF4CAF50),
+              child: Icon(
+                order.status == 'diambil'
+                    ? Icons.check_circle
+                    : Icons.undo_rounded,
+                color: order.status == 'diambil'
+                    ? const Color(0xFF4CAF50)
+                    : CoffeeColors.ink,
                 size: 22,
               ),
             ),
@@ -366,6 +371,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       color: const Color(0xFF2C1810),
                     ),
                   ),
+                  if (order.status != 'diambil')
+                    Text(
+                      order.statusLabel,
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        fontSize: 12,
+                        color: CoffeeColors.muted,
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   Row(
                     children: [

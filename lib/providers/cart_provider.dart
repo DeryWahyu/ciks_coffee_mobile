@@ -1,43 +1,105 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item_model.dart';
 import '../models/product_model.dart';
+import '../services/api_service.dart';
 
 class CartProvider extends ChangeNotifier {
   Map<String, CartItemModel> _items = {};
   Map<int, ProductModel>? _catalogue;
+  static int _basketSequence = 0;
+  static String _newBasketId() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${++_basketSequence}';
+  String _basketId = _newBasketId();
+  String get basketId => _basketId;
+  final Set<String> _appliedCheckouts = {};
+  int _sessionGeneration = 0;
+  int _editVersion = 0;
+  bool _loaded = false;
+  late final Future<void> ready;
+  int get sessionGeneration => _sessionGeneration;
+  late final StreamSubscription<void> _resetSubscription;
+  Future<void> _saveQueue = Future.value();
+  bool _lastSaveSucceeded = true;
+  Future<bool> persist() async {
+    await _saveQueue;
+    return _lastSaveSucceeded;
+  }
 
   CartProvider() {
-    _loadCart();
+    _resetSubscription = ApiService.cartResets.listen((_) {
+      _sessionGeneration++;
+      _catalogue = null;
+      _appliedCheckouts.clear();
+      clear();
+    });
+    ready = _loadCart();
+  }
+
+  @override
+  void dispose() {
+    _resetSubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCart() async {
+    final generation = _sessionGeneration;
+    final editVersion = _editVersion;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration || editVersion != _editVersion) {
+        return;
+      }
       final cartData = prefs.getString('cart_data');
       if (cartData != null) {
         final decoded = json.decode(cartData) as Map<String, dynamic>;
-        _items = decoded.map(
+        final entries = decoded['version'] == 2
+            ? Map<String, dynamic>.from(decoded['items'] as Map)
+            : decoded;
+        if (decoded['version'] == 2) {
+          _basketId = decoded['basket_id'] as String;
+          _appliedCheckouts.addAll(
+            List<String>.from(decoded['applied_checkouts'] as List? ?? []),
+          );
+        }
+        _items = entries.map(
           (key, value) => MapEntry(key, CartItemModel.fromJson(value)),
         );
         notifyListeners();
       }
     } catch (e) {
       debugPrint('Error loading cart: $e');
+    } finally {
+      _loaded = true;
     }
   }
 
-  Future<void> _saveCart() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final encoded = json.encode(
-        _items.map((key, value) => MapEntry(key, value.toJson())),
-      );
-      await prefs.setString('cart_data', encoded);
-    } catch (e) {
-      debugPrint('Error saving cart: $e');
-    }
+  Future<void> _saveCart() {
+    final generation = _sessionGeneration;
+    final empty = _items.isEmpty && _appliedCheckouts.isEmpty;
+    final encoded = json.encode({
+      'version': 2,
+      'basket_id': _basketId,
+      'applied_checkouts': _appliedCheckouts.toList(),
+      'items': _items.map((key, value) => MapEntry(key, value.toJson())),
+    });
+    _saveQueue = _saveQueue.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (generation != _sessionGeneration) return;
+        if (empty) {
+          _lastSaveSucceeded = await prefs.remove('cart_data');
+        } else {
+          _lastSaveSucceeded = await prefs.setString('cart_data', encoded);
+        }
+      } catch (e) {
+        _lastSaveSucceeded = false;
+        debugPrint('Error saving cart: $e');
+      }
+    });
+    return _saveQueue;
   }
 
   /// Unmodifiable view of all cart items
@@ -85,6 +147,12 @@ class CartProvider extends ChangeNotifier {
     List<ProductModel> products, {
     bool refreshPrices = false,
   }) {
+    if (!_loaded) {
+      ready.then(
+        (_) => updateCatalogue(products, refreshPrices: refreshPrices),
+      );
+      return;
+    }
     _catalogue = {for (final product in products) product.id: product};
     _items = _items.map(
       (key, item) => MapEntry(
@@ -111,6 +179,7 @@ class CartProvider extends ChangeNotifier {
   /// Add a product to the cart. If it already exists (same product+variant), increment quantity.
   bool addItem(ProductModel product, {String? variant}) {
     if (!canAddItem(product, variant: variant)) return false;
+    _editVersion++;
     product = currentProduct(product)!;
     final key = '${product.id}_${variant ?? 'default'}';
 
@@ -131,19 +200,23 @@ class CartProvider extends ChangeNotifier {
   /// Remove one quantity of a product. If quantity reaches 0, remove entirely.
   void removeItem(String key) {
     if (!_items.containsKey(key)) return;
+    _editVersion++;
 
     if (_items[key]!.quantity > 1) {
       _items[key]!.quantity--;
     } else {
       _items.remove(key);
     }
+    if (_items.isEmpty) _basketId = _newBasketId();
     _saveCart();
     notifyListeners();
   }
 
   /// Completely remove a product from the cart
   void deleteItem(String key) {
+    _editVersion++;
     _items.remove(key);
+    if (_items.isEmpty) _basketId = _newBasketId();
     _saveCart();
     notifyListeners();
   }
@@ -151,6 +224,7 @@ class CartProvider extends ChangeNotifier {
   /// Update quantity directly
   void updateQuantity(String key, int quantity) {
     if (!_items.containsKey(key)) return;
+    _editVersion++;
 
     if (quantity <= 0) {
       _items.remove(key);
@@ -165,13 +239,44 @@ class CartProvider extends ChangeNotifier {
       }
       _items[key]!.quantity = quantity;
     }
+    if (_items.isEmpty) _basketId = _newBasketId();
     _saveCart();
     notifyListeners();
   }
 
   /// Clear the entire cart
   void clear() {
+    _editVersion++;
     _items.clear();
+    _basketId = _newBasketId();
+    _saveCart();
+    notifyListeners();
+  }
+
+  /// Remove the submitted quantities only, retaining additions made on another tab.
+  void removePurchased(
+    List<Map<String, dynamic>> submitted,
+    int generation, {
+    String? checkoutId,
+    bool removeFromCart = true,
+  }) {
+    if (generation != _sessionGeneration) return;
+    if (checkoutId != null && !_appliedCheckouts.add(checkoutId)) {
+      _saveCart();
+      return;
+    }
+    while (_appliedCheckouts.length > 100) {
+      _appliedCheckouts.remove(_appliedCheckouts.first);
+    }
+    _editVersion++;
+    for (final item in removeFromCart ? submitted : <Map<String, dynamic>>[]) {
+      final key = '${item['product_id']}_${item['variant'] ?? 'default'}';
+      final current = _items[key];
+      if (current == null) continue;
+      current.quantity -= (item['quantity'] as num).toInt();
+      if (current.quantity <= 0) _items.remove(key);
+    }
+    if (_items.isEmpty) _basketId = _newBasketId();
     _saveCart();
     notifyListeners();
   }

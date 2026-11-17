@@ -11,6 +11,8 @@ class OrderModel {
   final String? paidAt;
   final String createdAt;
   final List<OrderItemModel> items;
+  final String? paymentReviewReason;
+  final String? paymentResolutionNote;
 
   OrderModel({
     required this.id,
@@ -25,6 +27,8 @@ class OrderModel {
     this.paidAt,
     required this.createdAt,
     required this.items,
+    this.paymentReviewReason,
+    this.paymentResolutionNote,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +50,8 @@ class OrderModel {
       paidAt: json['paid_at'],
       createdAt: json['created_at'] ?? '',
       items: itemsList.map((i) => OrderItemModel.fromJson(i)).toList(),
+      paymentReviewReason: json['payment_review_reason'],
+      paymentResolutionNote: json['payment_resolution_note'],
     );
   }
 }

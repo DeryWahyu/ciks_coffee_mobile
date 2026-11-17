@@ -254,6 +254,29 @@ Widget _app(CartProvider cart, ApiService api) => MultiProvider(
 );
 
 class _StockApi extends ApiService {
+  @override
+  Future<Map<String, dynamic>?> pendingCheckout() async => null;
+
+  @override
+  Future<Map<String, dynamic>> prepareCheckout({
+    required List<Map<String, dynamic>> items,
+    required double expectedTotal,
+    Map<String, dynamic>? pending,
+    String? cartId,
+  }) async => {
+    'success': true,
+    'data': {
+      'id': 'test-reservation',
+      'can_pay': true,
+      'local_cart_id': pending == null ? cartId : pending['local_cart_id'],
+      'items': items,
+      'total': expectedTotal,
+      'expires_at': DateTime.now()
+          .add(const Duration(minutes: 15))
+          .toIso8601String(),
+    },
+  };
+
   _StockApi({this.stock = 1});
   final int stock;
   int qrisCalls = 0;

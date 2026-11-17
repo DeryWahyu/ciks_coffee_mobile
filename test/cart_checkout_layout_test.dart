@@ -147,6 +147,29 @@ Widget _app(CartProvider cart, ApiService api, {double textScale = 1}) {
 }
 
 class _FakeApi extends ApiService {
+  @override
+  Future<Map<String, dynamic>?> pendingCheckout() async => null;
+
+  @override
+  Future<Map<String, dynamic>> prepareCheckout({
+    required List<Map<String, dynamic>> items,
+    required double expectedTotal,
+    Map<String, dynamic>? pending,
+    String? cartId,
+  }) async => {
+    'success': true,
+    'data': {
+      'id': 'test-reservation',
+      'can_pay': true,
+      'local_cart_id': pending == null ? cartId : pending['local_cart_id'],
+      'items': items,
+      'total': expectedTotal,
+      'expires_at': DateTime.now()
+          .add(const Duration(minutes: 15))
+          .toIso8601String(),
+    },
+  };
+
   int checkoutCalls = 0;
 
   @override
@@ -179,6 +202,7 @@ class _FakeApi extends ApiService {
     required List<Map<String, dynamic>> items,
     double? cashReceived,
     String? paymentProofPath,
+    String? checkoutId,
   }) async {
     checkoutCalls++;
     return {'success': false, 'message': 'Unexpected checkout'};
