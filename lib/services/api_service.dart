@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/table_layout_model.dart';
 import '../models/user_model.dart';
+import 'user_message.dart';
 
 enum SessionStatus { valid, unauthenticated, unavailable }
 
@@ -174,17 +175,11 @@ class ApiService {
   }
 
   Map<String, dynamic> _failure(http.Response response) {
-    final data = _decode(response.body), errors = data['errors'];
-    final first = errors is Map && errors.isNotEmpty
-        ? errors.values.first
-        : null;
+    final data = _decode(response.body);
     return {
       'success': false,
       'status': response.statusCode,
-      'message': first is List && first.isNotEmpty
-          ? first.first.toString()
-          : data['message']?.toString() ??
-                'Server belum dapat memproses permintaan (${response.statusCode}).',
+      'message': UserMessage.fromResponse(data, response.statusCode),
     };
   }
 
@@ -282,16 +277,22 @@ class ApiService {
     await clearToken();
   }
 
-  Future<bool> registerDeviceToken(String token) async {
+  Future<Map<String, dynamic>> registerDeviceToken(String token) async {
     try {
       final r = await _request(
         'POST',
         '/device-tokens',
         body: {'token': token, 'platform': 'android'},
       );
-      return r.statusCode == 200 || r.statusCode == 201;
+      return r.statusCode == 200 || r.statusCode == 201
+          ? {'success': true}
+          : _failure(r);
     } catch (_) {
-      return false;
+      return {
+        'success': false,
+        'message':
+            'Perangkat belum dapat didaftarkan ke server. Periksa koneksi lalu coba lagi.',
+      };
     }
   }
 
@@ -382,8 +383,10 @@ class ApiService {
     }
     return {
       'success': false,
-      'message':
-          result['message'] ?? data?['message'] ?? 'QRIS belum tersedia.',
+      'message': UserMessage.display(
+        result['message'] ?? data?['message'],
+        fallback: 'QRIS belum tersedia. Minta kasir memeriksa pengaturan QRIS.',
+      ),
     };
   }
 
@@ -500,17 +503,21 @@ class ApiService {
     await prefs.remove('pending_checkout');
   }
 
-  Future<bool> cancelCheckout(String id) async {
+  Future<Map<String, dynamic>> cancelCheckout(String id) async {
     try {
       final r = await _request('DELETE', '/checkouts/$id');
       if (r.statusCode == 200) {
         await clearPendingCheckout(checkoutId: id);
-        return true;
+        return {'success': true};
       }
+      return _failure(r);
     } catch (_) {
-      /* Retry the same reservation. */
+      return {
+        'success': false,
+        'message':
+            'Pembatalan belum dapat dipastikan karena koneksi terputus. Periksa menu Status sebelum mencoba lagi.',
+      };
     }
-    return false;
   }
 
   Future<Map<String, dynamic>> checkout({

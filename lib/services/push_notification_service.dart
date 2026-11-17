@@ -7,6 +7,35 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
+import 'user_message.dart';
+
+enum NotificationActivationStatus {
+  enabled,
+  disabled,
+  permissionDenied,
+  tokenUnavailable,
+  serverUnavailable,
+}
+
+class NotificationActivation {
+  const NotificationActivation(this.status, {this.reason});
+  final NotificationActivationStatus status;
+  final String? reason;
+  bool get enabled => status == NotificationActivationStatus.enabled;
+  String get message => switch (status) {
+    NotificationActivationStatus.enabled => 'Notifikasi berhasil diaktifkan.',
+    NotificationActivationStatus.disabled => 'Notifikasi dinonaktifkan.',
+    NotificationActivationStatus.permissionDenied =>
+      'Izin notifikasi belum aktif. Periksa pengaturan aplikasi di perangkat.',
+    NotificationActivationStatus.tokenUnavailable =>
+      'Layanan notifikasi perangkat belum siap. Periksa koneksi internet lalu coba lagi beberapa saat.',
+    NotificationActivationStatus.serverUnavailable => UserMessage.display(
+      reason,
+      fallback:
+          'Notifikasi belum dapat dihubungkan ke server. Periksa koneksi lalu coba lagi.',
+    ),
+  };
+}
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,9 +43,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  PushNotificationService._();
+  PushNotificationService({
+    FirebaseMessaging? messaging,
+    ApiService? apiService,
+  }) : _messaging = messaging ?? FirebaseMessaging.instance,
+       _apiService = apiService ?? ApiService();
 
-  static final PushNotificationService instance = PushNotificationService._();
+  static final PushNotificationService instance = PushNotificationService();
 
   static const String _preferenceKey = 'notifications_enabled';
   static const String _channelId = 'order_status_updates';
@@ -29,10 +62,10 @@ class PushNotificationService {
     enableVibration: true,
   );
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final FirebaseMessaging _messaging;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
   final StreamController<Map<String, dynamic>> _orderStatusUpdates =
       StreamController<Map<String, dynamic>>.broadcast();
   final StreamController<void> _statusNavigation =
@@ -93,10 +126,12 @@ class PushNotificationService {
     await syncToken();
   }
 
-  Future<bool> syncToken() async {
+  Future<NotificationActivation> syncToken() async {
     final preferences = await SharedPreferences.getInstance();
     if (!(preferences.getBool(_preferenceKey) ?? true)) {
-      return false;
+      return const NotificationActivation(
+        NotificationActivationStatus.disabled,
+      );
     }
 
     try {
@@ -110,32 +145,46 @@ class PushNotificationService {
           settings.authorizationStatus == AuthorizationStatus.provisional;
 
       if (!isAuthorized) {
-        return false;
+        return const NotificationActivation(
+          NotificationActivationStatus.permissionDenied,
+        );
       }
 
       final token = await _messaging.getToken();
       if (token == null || token.isEmpty) {
-        return false;
+        return const NotificationActivation(
+          NotificationActivationStatus.tokenUnavailable,
+        );
       }
 
-      return _apiService.registerDeviceToken(token);
+      final result = await _apiService.registerDeviceToken(token);
+      return result['success'] == true
+          ? const NotificationActivation(NotificationActivationStatus.enabled)
+          : NotificationActivation(
+              NotificationActivationStatus.serverUnavailable,
+              reason: result['message'] as String?,
+            );
     } catch (error) {
       debugPrint('[PushNotification] token sync failed: $error');
-      return false;
+      return const NotificationActivation(
+        NotificationActivationStatus.serverUnavailable,
+      );
     }
   }
 
-  Future<bool> setEnabled(bool enabled) async {
+  Future<NotificationActivation> setEnabled(bool enabled) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_preferenceKey, enabled);
 
     if (!enabled) {
       await unregisterCurrentDevice();
-      return false;
+      return const NotificationActivation(
+        NotificationActivationStatus.disabled,
+      );
     }
 
     final activated = await syncToken();
-    if (!activated) {
+    if (!activated.enabled) {
       await preferences.setBool(_preferenceKey, false);
     }
     return activated;

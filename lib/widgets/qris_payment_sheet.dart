@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../services/user_message.dart';
 import 'coffee_overlays.dart';
 
 class QrisPaymentSheet extends StatefulWidget {
@@ -24,7 +25,7 @@ class QrisPaymentSheet extends StatefulWidget {
   final LanguageProvider language;
   final ApiService apiService;
   final DateTime? expiresAt;
-  final Future<bool> Function()? onCancel;
+  final Future<Map<String, dynamic>> Function()? onCancel;
   final List<Map<String, dynamic>> items;
   final bool allowPayment;
 
@@ -82,13 +83,28 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
     );
     if (confirmed != true || !mounted) return;
     setState(() => _cancelling = true);
-    final cancelled = await widget.onCancel!();
+    Map<String, dynamic> cancelled;
+    try {
+      cancelled = await widget.onCancel!();
+    } catch (_) {
+      cancelled = {
+        'success': false,
+        'message':
+            'Pembatalan belum dapat dipastikan. Periksa menu Status sebelum mencoba lagi.',
+      };
+    }
     if (!mounted) return;
     setState(() => _cancelling = false);
-    if (cancelled) {
+    if (cancelled['success'] == true) {
       Navigator.of(context).pop('');
     } else {
-      setState(() => _error = 'Pembatalan belum berhasil. Silakan coba lagi.');
+      setState(
+        () => _error = UserMessage.display(
+          cancelled['message'],
+          fallback:
+              'Pembatalan belum berhasil. Periksa menu Status sebelum mencoba lagi.',
+        ),
+      );
     }
   }
 
@@ -222,11 +238,14 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
                       data!['image_url'],
                       height: 200,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, error, stack) => _qrisError(english),
+                      errorBuilder: (_, error, stack) => _qrisError(
+                        english,
+                        'Gambar QRIS gagal dimuat. Periksa koneksi lalu coba lagi atau minta bantuan kasir.',
+                      ),
                     ),
                   );
                 }
-                return _qrisError(english);
+                return _qrisError(english, data?['message']);
               },
             ),
           const SizedBox(height: 20),
@@ -340,7 +359,7 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
     );
   }
 
-  Widget _qrisError(bool english) => Container(
+  Widget _qrisError(bool english, [Object? reason]) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: CoffeeColors.cream,
@@ -355,7 +374,13 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
         ),
         const SizedBox(height: 10),
         Text(
-          english ? 'QRIS could not be loaded.' : 'QRIS belum dapat dimuat.',
+          widget.language.tr(
+            UserMessage.display(
+              reason,
+              fallback:
+                  'QRIS belum dapat dimuat. Periksa koneksi atau minta bantuan kasir.',
+            ),
+          ),
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'CiksSans',

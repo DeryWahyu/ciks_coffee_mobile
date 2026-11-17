@@ -7,6 +7,7 @@ import '../models/product_model.dart';
 import '../providers/cart_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
+import '../services/user_message.dart';
 import '../widgets/cart_checkout_panel.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/qris_payment_sheet.dart';
@@ -66,9 +67,12 @@ class _CartScreenState extends State<CartScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                lang.isEnglish
-                    ? 'Stock could not be checked. Please try again.'
-                    : 'Stok belum dapat diperiksa. Silakan coba lagi.',
+                lang.tr(
+                  UserMessage.display(
+                    catalogue['message'],
+                    fallback: 'Stok belum dapat diperiksa. Silakan coba lagi.',
+                  ),
+                ),
               ),
             ),
           );
@@ -151,7 +155,7 @@ class _CartScreenState extends State<CartScreen> {
           allowPayment: quote['can_pay'] == true,
           onCancel: () async {
             final cancelled = await _apiService.cancelCheckout(quote['id']);
-            if (cancelled && mounted) {
+            if (cancelled['success'] == true && mounted) {
               setState(() => _hasPendingCheckout = false);
             }
             return cancelled;

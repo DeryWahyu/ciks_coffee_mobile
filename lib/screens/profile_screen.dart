@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
+import '../services/user_message.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/navigation_safe_content.dart';
@@ -12,8 +13,9 @@ import '../providers/language_provider.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.apiService});
+  const ProfileScreen({super.key, this.apiService, this.notificationService});
   final ApiService? apiService;
+  final PushNotificationService? notificationService;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -22,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late final ApiService _apiService = widget.apiService ?? ApiService();
   UserModel? _user;
+  String? _profileError;
   bool _isLoading = true;
   bool _isLoggingOut = false;
   bool _notificationsEnabled = true;
@@ -43,18 +46,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _toggleNotification(bool value) async {
-    final isEnabled = await PushNotificationService.instance.setEnabled(value);
+    final activation =
+        await (widget.notificationService ?? PushNotificationService.instance)
+            .setEnabled(value);
     if (!mounted) return;
 
     setState(() {
-      _notificationsEnabled = value ? isEnabled : false;
+      _notificationsEnabled = value && activation.enabled;
     });
 
-    if (value && !isEnabled) {
+    if (value && !activation.enabled) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Izin notifikasi belum aktif. Periksa pengaturan aplikasi di perangkat.',
+            context.read<LanguageProvider>().tr(activation.message),
           ),
         ),
       );
@@ -62,13 +67,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchProfile() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _profileError = null;
+    });
     final result = await _apiService.getProfile();
     if (mounted) {
       setState(() {
         _isLoading = false;
         if (result['success']) {
           _user = UserModel.fromJson(result['data']);
+        } else {
+          _profileError = UserMessage.display(
+            result['message'],
+            fallback: 'Gagal memuat profil. Periksa koneksi lalu coba lagi.',
+          );
         }
       });
     }
@@ -287,7 +300,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    lang.tr('Gagal memuat profil.'),
+                    lang.tr(_profileError ?? 'Gagal memuat profil.'),
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
                   ),
                   const SizedBox(height: 12),
