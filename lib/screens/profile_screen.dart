@@ -6,19 +6,21 @@ import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/coffee_overlays.dart';
+import '../widgets/navigation_safe_content.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.apiService});
+  final ApiService? apiService;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService = widget.apiService ?? ApiService();
   UserModel? _user;
   bool _isLoading = true;
   bool _isLoggingOut = false;
@@ -274,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: CircularProgressIndicator(color: Color(0xFF5D3A1A)),
             )
           : _user == null
-          ? Center(
+          ? NavigationSafeContent(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -410,6 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
+                            key: const ValueKey('profile-logout'),
                             onPressed: _logout,
                             icon: const Icon(Icons.logout, size: 18),
                             label: Text(

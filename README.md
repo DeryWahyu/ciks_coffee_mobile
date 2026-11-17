@@ -1,5 +1,23 @@
 # ciks_coffee_mobile
 
+## Floating navigation and table chairs
+
+Home reads the floating navigation inset from the Scaffold body context so the
+last menu item has the same bottom clearance as profile logout. Status, history,
+cart, and profile also keep their last content above the navigation when scrolling
+settles. Empty/error states can scroll on short screens. History's summary scrolls
+with its list, and status progress labels wrap within their columns for larger text.
+The navbar's appearance and transparent surroundings remain unchanged.
+
+Table availability reads optional `chair_positions` from the shared API. Each
+chair uses `left`, `right`, `front`, or `back`, anchored to the table edge and
+rotated with the table. Geometry matches the web editor. Missing/invalid custom
+positions fall back to the existing automatic seating style.
+
+Run `flutter test test/bottom_navigation_clearance_test.dart test/floor_plan_view_test.dart`
+for bottom clearance at rest across all five tabs, short/landscape screens,
+safe-area insets, enlarged text, and custom seating geometry.
+
 ## Cart and order confirmation
 
 The audit fixes use checkout protocol version 2. Deploy the matching web/API and

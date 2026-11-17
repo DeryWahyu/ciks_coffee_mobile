@@ -375,15 +375,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F1E8),
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeContent(),
-          CartScreen(apiService: _apiService),
-          const OrderStatusScreen(),
-          const HistoryScreen(),
-          const ProfileScreen(),
-        ],
+      body: Builder(
+        builder: (bodyContext) => IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeContent(bodyContext),
+            CartScreen(apiService: _apiService),
+            OrderStatusScreen(apiService: _apiService),
+            HistoryScreen(apiService: _apiService),
+            ProfileScreen(apiService: _apiService),
+          ],
+        ),
       ),
       bottomNavigationBar: Consumer<CartProvider>(
         builder: (context, cart, _) => AppBottomNavigation(
@@ -396,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHomeContent() {
+  Widget _buildHomeContent(BuildContext context) {
     final lang = Provider.of<LanguageProvider>(context);
     context.watch<CartProvider>();
 
@@ -429,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                     child: Container(
-                      height: 130,
+                      constraints: const BoxConstraints(minHeight: 130),
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -513,13 +515,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                               color: Colors.white,
                                             ),
                                             const SizedBox(width: 5),
-                                            Text(
-                                              _getGreeting(lang).toUpperCase(),
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                                letterSpacing: 1.5,
+                                            Flexible(
+                                              child: Text(
+                                                _getGreeting(
+                                                  lang,
+                                                ).toUpperCase(),
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                  letterSpacing: 1.5,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -850,16 +856,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    lang.tr('Menu Pilihan'),
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF2C1810),
-                      letterSpacing: -0.3,
+                  Expanded(
+                    child: Text(
+                      lang.tr('Menu Pilihan'),
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2C1810),
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     '${_products.length} ${lang.tr('item')}',
                     style: GoogleFonts.inter(

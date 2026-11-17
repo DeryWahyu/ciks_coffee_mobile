@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/order_dialogs.dart';
+import '../widgets/navigation_safe_content.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -144,80 +145,85 @@ class _HistoryScreenState extends State<HistoryScreen> {
           : RefreshIndicator(
               onRefresh: _fetchHistory,
               color: const Color(0xFF5D3A1A),
-              child: Column(
-                children: [
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
                   // Summary header
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF5D3A1A),
-                          Color(0xFF8B6B4A),
-                          Color(0xFFD4A574),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF5D3A1A,
-                          ).withValues(alpha: 0.24),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.receipt_long,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_orders.length} ${lang.isEnglish ? 'Orders' : 'Pesanan'}',
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              '${lang.isEnglish ? 'Purchases' : 'Belanja'}: ${_formatPrice(_orders.where((o) => o.status == 'diambil').fold(0.0, (sum, o) => sum + o.total))}',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.7),
-                              ),
-                            ),
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF5D3A1A),
+                            Color(0xFF8B6B4A),
+                            Color(0xFFD4A574),
                           ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF5D3A1A,
+                            ).withValues(alpha: 0.24),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.receipt_long,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${_orders.length} ${lang.isEnglish ? 'Orders' : 'Pesanan'}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '${lang.isEnglish ? 'Purchases' : 'Belanja'}: ${_formatPrice(_orders.where((o) => o.status == 'diambil').fold(0.0, (sum, o) => sum + o.total))}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // Order list
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.fromLTRB(
-                        20,
-                        8,
-                        20,
-                        24 + MediaQuery.paddingOf(context).bottom,
-                      ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      8,
+                      20,
+                      24 + MediaQuery.paddingOf(context).bottom,
+                    ),
+                    sliver: SliverList.builder(
                       itemCount: _orders.length,
                       itemBuilder: (context, index) =>
                           _buildHistoryCard(_orders[index], lang),
@@ -230,7 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildEmptyState(LanguageProvider lang) {
-    return Center(
+    return NavigationSafeContent(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -289,7 +295,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildErrorState(LanguageProvider lang) {
-    return Center(
+    return NavigationSafeContent(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -324,6 +330,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildHistoryCard(OrderModel order, LanguageProvider lang) {
     return GestureDetector(
+      key: ValueKey('history-order-${order.id}'),
       onTap: () => _showDetailSheet(order, lang),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -360,6 +367,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(width: 14),
             Expanded(
+              flex: 2,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -381,14 +389,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Icon(
                         Icons.access_time,
                         size: 12,
                         color: Color(0xFF8B7355),
                       ),
-                      const SizedBox(width: 4),
                       Text(
                         _formatDate(order.createdAt, lang),
                         style: GoogleFonts.inter(
@@ -396,7 +406,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           color: const Color(0xFF8B7355),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -420,23 +429,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _formatPrice(order.total),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF5D3A1A),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatPrice(order.total),
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF5D3A1A),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: const Color(0xFF4A3022).withValues(alpha: 0.3),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: const Color(0xFF4A3022).withValues(alpha: 0.3),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

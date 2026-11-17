@@ -31,6 +31,60 @@ List<FloorPlanSeat> floorPlanSeats(
   CoffeeTableModel table,
   Map<String, dynamic> config,
 ) {
+  final positions = table.chairPositions;
+  if (positions != null &&
+      positions.length == table.capacity &&
+      positions.isNotEmpty &&
+      positions.every(
+        (side) => ['left', 'right', 'front', 'back'].contains(side),
+      )) {
+    final used = <String, int>{'left': 0, 'right': 0, 'front': 0, 'back': 0};
+    return positions
+        .map((side) {
+          final count = positions.where((value) => value == side).length;
+          final slot = used[side]!;
+          used[side] = slot + 1;
+          if (table.shape == 'round') {
+            final size = math.min(.30, .70 / count);
+            final centerAngle = <String, double>{
+              'right': 0,
+              'front': math.pi / 2,
+              'left': math.pi,
+              'back': -math.pi / 2,
+            }[side]!;
+            final angle =
+                centerAngle + ((slot + .5) / count - .5) * math.pi / 2;
+            final radius = .54 + size / 2;
+            return FloorPlanSeat(
+              Rect.fromLTWH(
+                .5 + math.cos(angle) * radius - size / 2,
+                .5 + math.sin(angle) * radius - size / 2,
+                size,
+                size,
+              ),
+              round: true,
+            );
+          }
+          final size = math.min(.30, .80 / count),
+              center = .10 + (slot + .5) * .80 / count;
+          return FloorPlanSeat(
+            side == 'left' || side == 'right'
+                ? Rect.fromLTWH(
+                    side == 'left' ? -.18 : 1.10,
+                    center - size / 2,
+                    .08,
+                    size,
+                  )
+                : Rect.fromLTWH(
+                    center - size / 2,
+                    side == 'back' ? -.18 : 1.10,
+                    size,
+                    .08,
+                  ),
+          );
+        })
+        .toList(growable: false);
+  }
   final seating = config['table_seating'];
   final preferred = seating is Map
       ? seating['id:${table.id}'] ?? seating[table.code]

@@ -197,6 +197,7 @@ class CoffeeTableModel {
     required this.status,
     required this.statusLabel,
     this.statusUpdatedAt,
+    this.chairPositions,
   });
 
   final int id;
@@ -212,11 +213,19 @@ class CoffeeTableModel {
   final String status;
   final String statusLabel;
   final DateTime? statusUpdatedAt;
+  final List<String>? chairPositions;
 
   bool get isAvailable => status == 'available';
 
   factory CoffeeTableModel.fromJson(Map<String, dynamic> json) {
     final status = _asString(json['status'], fallback: 'unavailable');
+    final positions = json['chair_positions'];
+    final validPositions =
+        positions is List &&
+        positions.length == _asInt(json['capacity']) &&
+        positions.every(
+          (side) => ['left', 'right', 'front', 'back'].contains(side),
+        );
     return CoffeeTableModel(
       id: _asInt(json['id']),
       code: _asString(json['code'], fallback: 'MEJA'),
@@ -229,6 +238,9 @@ class CoffeeTableModel {
       height: _asDouble(json['height'], fallback: 12),
       rotation: _asDouble(json['rotation']),
       status: status,
+      chairPositions: validPositions
+          ? List<String>.unmodifiable(positions)
+          : null,
       statusLabel: _asString(
         json['status_label'],
         fallback: tableStatusLabel(status),

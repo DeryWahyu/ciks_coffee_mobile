@@ -327,6 +327,11 @@ class _HomeApi extends _StockApi {
   @override
   Future<Map<String, dynamic>> getProfile() async => {
     'success': true,
-    'data': {'name': 'Pelanggan uji'},
+    'data': {
+      'id': 1,
+      'name': 'Pelanggan uji',
+      'email': 'uji@example.test',
+      'role': 'pengguna',
+    },
   };
 }

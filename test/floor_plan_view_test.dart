@@ -14,6 +14,55 @@ final _pixel = Uint8List.fromList(
 
 void main() {
   test(
+    'custom chairs follow all four edges and fit crowded edges on web geometry',
+    () {
+      final table = CoffeeTableModel.fromJson({
+        ..._tableJson(1, 'available'),
+        'chair_positions': ['left', 'right', 'front', 'back'],
+      });
+      final seats = floorPlanSeats(table, {
+        'table_seating': {'id:1': 'sofa_pair'},
+      });
+      expect(seats.length, 4);
+      expect(seats[0].bounds, const Rect.fromLTWH(-.18, .35, .08, .30));
+      expect(seats[1].bounds.left, 1.10);
+      expect(seats[2].bounds.top, 1.10);
+      expect(seats[3].bounds.top, -.18);
+      final crowded = CoffeeTableModel.fromJson({
+        ..._tableJson(1, 'available'),
+        'capacity': 20,
+        'chair_positions': List.filled(20, 'left'),
+      });
+      final packed = floorPlanSeats(crowded, {});
+      expect(packed.length, 20);
+      for (var i = 0; i < packed.length; i++) {
+        expect(packed[i].bounds.top, greaterThanOrEqualTo(0));
+        expect(packed[i].bounds.bottom, lessThanOrEqualTo(1));
+        if (i > 0) {
+          expect(
+            packed[i - 1].bounds.bottom,
+            lessThanOrEqualTo(packed[i].bounds.top + 1e-9),
+          );
+        }
+      }
+      final round = CoffeeTableModel.fromJson({
+        ..._tableJson(1, 'available'),
+        'shape': 'round',
+        'chair_positions': ['left', 'right', 'front', 'back'],
+      });
+      final roundSeats = floorPlanSeats(round, {});
+      expect(roundSeats.every((seat) => seat.round), isTrue);
+      expect(roundSeats[0].bounds.right, closeTo(-.04, 1e-9));
+      expect(roundSeats[2].bounds.top, closeTo(1.04, 1e-9));
+      final malformed = CoffeeTableModel.fromJson({
+        ..._tableJson(1, 'available'),
+        'chair_positions': ['outside'],
+      });
+      expect(malformed.chairPositions, isNull);
+    },
+  );
+
+  test(
     'standard chairs, round pairs, benches and sofas use the web geometry',
     () {
       final square = _table(1, 'available');

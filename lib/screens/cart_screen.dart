@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../widgets/cart_checkout_panel.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/qris_payment_sheet.dart';
+import '../widgets/navigation_safe_content.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key, this.apiService});
@@ -307,24 +308,21 @@ class _CartScreenState extends State<CartScreen> {
         child: Consumer<CartProvider>(
           builder: (context, cart, _) {
             if (cart.isEmpty && _hasPendingCheckout) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Ada sesi pembayaran yang belum selesai.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      CoffeeButton(
-                        label: 'Lanjutkan pembayaran',
-                        onPressed: _checkout,
-                        loading: _isCheckingOut,
-                      ),
-                    ],
-                  ),
+              return NavigationSafeContent(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Ada sesi pembayaran yang belum selesai.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    CoffeeButton(
+                      label: 'Lanjutkan pembayaran',
+                      onPressed: _checkout,
+                      loading: _isCheckingOut,
+                    ),
+                  ],
                 ),
               );
             }
@@ -373,40 +371,37 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _emptyCart(LanguageProvider lang) => Center(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.shopping_bag_outlined,
-            size: 64,
+  Widget _emptyCart(LanguageProvider lang) => NavigationSafeContent(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.shopping_bag_outlined,
+          size: 64,
+          color: CoffeeColors.muted,
+        ),
+        const SizedBox(height: 20),
+        Text(
+          lang.tr('Keranjang Kosong'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            color: CoffeeColors.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          lang.tr('Yuk, pilih menu favoritmu!'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontSize: 14,
             color: CoffeeColors.muted,
           ),
-          const SizedBox(height: 20),
-          Text(
-            lang.tr('Keranjang Kosong'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'CiksSans',
-              fontSize: 21,
-              fontWeight: FontWeight.w700,
-              color: CoffeeColors.ink,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            lang.tr('Yuk, pilih menu favoritmu!'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'CiksSans',
-              fontSize: 14,
-              color: CoffeeColors.muted,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 

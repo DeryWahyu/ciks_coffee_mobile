@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/order_dialogs.dart';
+import '../widgets/navigation_safe_content.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -426,7 +427,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
   }
 
   Widget _buildEmptyState(LanguageProvider lang) {
-    return Center(
+    return NavigationSafeContent(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -489,6 +490,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
     final isReady = order.status == 'selesai';
 
     return Container(
+      key: ValueKey('active-order-${order.id}'),
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -524,20 +526,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          Expanded(
-                            child: Text(
-                              order.orderNumber,
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: const Color(0xFF4A3022),
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            order.orderNumber,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: const Color(0xFF4A3022),
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -576,12 +577,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
                     ],
                   ),
                 ),
-                Text(
-                  _formatPrice(order.total),
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: const Color(0xFF4A3022),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _formatPrice(order.total),
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: const Color(0xFF4A3022),
+                    ),
                   ),
                 ),
               ],
@@ -630,39 +635,45 @@ class _OrderStatusScreenState extends State<OrderStatusScreen>
                       ? _stageColor(order.status)
                       : const Color(0xFFD2B48C).withValues(alpha: 0.4);
 
-                  return Column(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        padding: EdgeInsets.all(isCurrent ? 8 : 6),
-                        decoration: BoxDecoration(
-                          color: isCurrent
-                              ? color.withValues(alpha: 0.15)
-                              : Colors.transparent,
-                          shape: BoxShape.circle,
+                  return Expanded(
+                    flex: 4,
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: EdgeInsets.all(isCurrent ? 8 : 6),
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? color.withValues(alpha: 0.15)
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            stage['icon'] as IconData,
+                            size: isCurrent ? 22 : 18,
+                            color: color,
+                          ),
                         ),
-                        child: Icon(
-                          stage['icon'] as IconData,
-                          size: isCurrent ? 22 : 18,
-                          color: color,
+                        const SizedBox(height: 4),
+                        Text(
+                          lang.isEnglish
+                              ? stage['label_en'] as String
+                              : stage['label'] as String,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isActive
+                                ? const Color(0xFF4A3022)
+                                : const Color(
+                                    0xFF4A3022,
+                                  ).withValues(alpha: 0.4),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        lang.isEnglish
-                            ? stage['label_en'] as String
-                            : stage['label'] as String,
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isActive
-                              ? const Color(0xFF4A3022)
-                              : const Color(0xFF4A3022).withValues(alpha: 0.4),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   );
                 }
               }),
