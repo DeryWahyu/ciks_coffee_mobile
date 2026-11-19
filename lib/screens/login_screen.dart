@@ -201,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const BrandMark(size: 16, color: Color(0xFFD4A574)),
                             const SizedBox(width: 6),
                             Text(
-                              'EST. 2024',
+                              'EST. 2025',
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -216,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Shared aroma mark
+                  // Shared CIKS C mark
                   Container(
                     width: 76,
                     height: 76,
@@ -241,15 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
 
                   // Brand name & tagline
-                  Text(
-                    'Ciks Coffee',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
+                  const BrandWordmark(width: 132, color: BrandMark.cream),
                   const SizedBox(height: 4),
                   Text(
                     'Artisan Coffee & Warm Space',

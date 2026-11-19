@@ -2,33 +2,100 @@ import 'dart:io';
 
 import 'package:image/image.dart' as img;
 
-/// Platform exports of the approved mark; never redraw or regenerate the logo.
-void main() {
-  final mark = img.decodePng(
-    File('assets/branding/cikscoffee-mark.png').readAsBytesSync(),
-  )!;
+/// Platform exports from the generated CIKS C master; never redraw the artwork.
+void main(List<String> arguments) {
+  img.Image readArtwork(String path) {
+    final source = img.decodePng(File(path).readAsBytesSync())!;
+    var left = source.width, top = source.height, right = -1, bottom = -1;
+    for (final pixel in source) {
+      if (pixel.a <= 8) continue;
+      if (pixel.x < left) left = pixel.x;
+      if (pixel.y < top) top = pixel.y;
+      if (pixel.x > right) right = pixel.x;
+      if (pixel.y > bottom) bottom = pixel.y;
+    }
+    if (right < left || bottom < top) {
+      throw StateError('Empty brand artwork: $path');
+    }
+    return img.copyCrop(
+      source,
+      x: left,
+      y: top,
+      width: right - left + 1,
+      height: bottom - top + 1,
+    );
+  }
 
-  img.Image canvas(int size, int markSize, {bool opaque = false}) {
-    final result = img.Image(width: size, height: size, numChannels: 4);
+  final mark = readArtwork('assets/branding/source/cikscoffee-c-master.png');
+  final wordmark = readArtwork(
+    'assets/branding/source/cikscoffee-wordmark-master.png',
+  );
+
+  img.Image fitArtwork(
+    img.Image artwork,
+    int width,
+    int height,
+    int padding, {
+    bool opaque = false,
+  }) {
+    final result = img.Image(width: width, height: height, numChannels: 4);
     img.fill(result, color: img.ColorRgba8(250, 247, 243, opaque ? 255 : 0));
+    final scaleX = (width - padding * 2) / artwork.width;
+    final scaleY = (height - padding * 2) / artwork.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
     final resized = img.copyResize(
-      mark,
-      width: markSize,
-      height: markSize,
+      artwork,
+      width: (artwork.width * scale).round(),
+      height: (artwork.height * scale).round(),
       interpolation: img.Interpolation.average,
     );
     img.compositeImage(
       result,
       resized,
-      dstX: (size - markSize) ~/ 2,
-      dstY: (size - markSize) ~/ 2,
+      dstX: (width - resized.width) ~/ 2,
+      dstY: (height - resized.height) ~/ 2,
     );
     return result;
   }
 
+  img.Image canvas(int size, int markSize, {bool opaque = false}) {
+    return fitArtwork(mark, size, size, (size - markSize) ~/ 2, opaque: opaque);
+  }
+
   void save(String path, img.Image image) {
     final file = File(path)..parent.createSync(recursive: true);
-    file.writeAsBytesSync(img.encodePng(image));
+    file.writeAsBytesSync(img.encodePng(image, level: 9));
+  }
+
+  final runtimeMark = canvas(512, 492);
+  final runtimeWordmark = fitArtwork(wordmark, 1024, 464, 16);
+  save('assets/branding/cikscoffee-mark.png', runtimeMark);
+  save('assets/branding/cikscoffee-wordmark.png', runtimeWordmark);
+
+  // Optional export for the sibling Laravel checkout in this workspace.
+  if (arguments.contains('--web')) {
+    const web = '../ciks_coffee_web/public/images/branding';
+    if (!Directory('../ciks_coffee_web/public').existsSync()) {
+      throw StateError('The sibling web checkout was not found.');
+    }
+    save('$web/cikscoffee-c-mark.png', runtimeMark);
+    save('$web/cikscoffee-wordmark.png', runtimeWordmark);
+    save('$web/cikscoffee-favicon-32.png', canvas(32, 30));
+    save('$web/cikscoffee-favicon-64.png', canvas(64, 60));
+    // Keep the browser fallback and the previous favicon URL on the same C mark.
+    File('../ciks_coffee_web/public/favicon.ico').writeAsBytesSync(
+      img.IcoEncoder().encodeImages([
+        for (final size in [16, 32, 48, 64]) canvas(size, size - 2),
+      ]),
+    );
+    save(
+      '../ciks_coffee_web/public/images/cikscoffee-favicon-v2.png',
+      canvas(64, 60),
+    );
+    save(
+      '$web/cikscoffee-apple-touch-icon.png',
+      canvas(180, 140, opaque: true),
+    );
   }
 
   save(

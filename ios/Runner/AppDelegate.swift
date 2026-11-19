@@ -12,5 +12,26 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    let channel = FlutterMethodChannel(
+      name: "com.cikscoffee.app/app_info",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "getAppInfo":
+        result([
+          "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+          "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        ])
+      case "openNotificationSettings":
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+          result(false)
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { opened in result(opened) }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }

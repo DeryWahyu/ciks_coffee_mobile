@@ -315,6 +315,17 @@ class FloorPlanView extends StatelessWidget {
     final round = table.shape == 'round';
     final radius = BorderRadius.circular(round ? 999 : 1);
     final seats = floorPlanSeats(table, data.layout.backgroundConfig);
+    final statusDot = ExcludeSemantics(
+      child: Container(
+        key: ValueKey('table-status-dot-${table.id}'),
+        width: (size.width * .0065).clamp(5, 8),
+        height: (size.width * .0065).clamp(5, 8),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: FloorPlanPalette.status(table.status),
+        ),
+      ),
+    );
     return Positioned(
       left: size.width * table.positionX / 100,
       top: size.height * table.positionY / 100,
@@ -392,6 +403,10 @@ class FloorPlanView extends StatelessWidget {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    if (round) ...[
+                                      statusDot,
+                                      const SizedBox(height: 2),
+                                    ],
                                     Text(
                                       table.code,
                                       style: TextStyle(
@@ -423,21 +438,8 @@ class FloorPlanView extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Positioned(
-                            top: 3,
-                            right: 3,
-                            child: ExcludeSemantics(
-                              child: Container(
-                                key: ValueKey('table-status-dot-${table.id}'),
-                                width: (size.width * .0065).clamp(5, 8),
-                                height: (size.width * .0065).clamp(5, 8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: FloorPlanPalette.status(table.status),
-                                ),
-                              ),
-                            ),
-                          ),
+                          if (!round)
+                            Positioned(top: 3, right: 3, child: statusDot),
                         ],
                       ),
                     ),

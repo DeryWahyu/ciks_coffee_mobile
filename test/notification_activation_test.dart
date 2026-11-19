@@ -99,6 +99,87 @@ void main() {
     );
   });
 
+  test(
+    'reading status checks permission without prompting or registering twice',
+    () async {
+      SharedPreferences.setMockInitialValues({'notifications_enabled': true});
+      final messaging = _Messaging();
+      var requests = 0;
+      final service = PushNotificationService(
+        messaging: messaging,
+        apiService: ApiService(
+          client: MockClient((_) async {
+            requests++;
+            return http.Response('{}', 201);
+          }),
+        ),
+      );
+      expect((await service.getStatus()).enabled, isTrue);
+      expect((await service.getStatus()).enabled, isTrue);
+      expect(messaging.permissionRequests, 0);
+      expect(messaging.settingsReads, 2);
+      expect(requests, 1);
+      expect(service.registeredToken, 'device-token');
+      service.invalidateRegistration();
+      expect((await service.getStatus()).enabled, isTrue);
+      expect(requests, 2);
+    },
+  );
+
+  for (final serverRemovesToken in [false, true]) {
+    test(
+      'turning notifications off handles server removal $serverRemovesToken when Firebase fails',
+      () async {
+        SharedPreferences.setMockInitialValues({'notifications_enabled': true});
+        final service = PushNotificationService(
+          messaging: _Messaging(deleteFails: true),
+          apiService: ApiService(
+            client: MockClient(
+              (_) async => http.Response('{}', serverRemovesToken ? 200 : 503),
+            ),
+          ),
+        );
+        final result = await service.setEnabled(false);
+        expect(
+          result.status,
+          serverRemovesToken
+              ? NotificationActivationStatus.disabled
+              : NotificationActivationStatus.serverUnavailable,
+        );
+        expect(
+          (await SharedPreferences.getInstance()).getBool(
+            'notifications_enabled',
+          ),
+          !serverRemovesToken,
+        );
+      },
+    );
+  }
+
+  test(
+    'turning notifications off works when Firebase invalidates the token while server is offline',
+    () async {
+      SharedPreferences.setMockInitialValues({'notifications_enabled': true});
+      final messaging = _Messaging();
+      final result = await PushNotificationService(
+        messaging: messaging,
+        apiService: ApiService(
+          client: MockClient(
+            (_) async => throw http.ClientException('offline'),
+          ),
+        ),
+      ).setEnabled(false);
+      expect(result.status, NotificationActivationStatus.disabled);
+      expect(messaging.deletions, 1);
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          'notifications_enabled',
+        ),
+        isFalse,
+      );
+    },
+  );
+
   testWidgets('profile shows connection advice rather than permission advice', (
     tester,
   ) async {
@@ -133,9 +214,24 @@ class _Messaging extends Fake implements FirebaseMessaging {
   _Messaging({
     this.status = AuthorizationStatus.authorized,
     this.token = 'device-token',
+    this.deleteFails = false,
   });
   final AuthorizationStatus status;
   final String? token;
+  final bool deleteFails;
+  int permissionRequests = 0, settingsReads = 0, deletions = 0;
+  @override
+  Future<NotificationSettings> getNotificationSettings() async {
+    settingsReads++;
+    return _Settings(status);
+  }
+
+  @override
+  Future<void> deleteToken() async {
+    deletions++;
+    if (deleteFails) throw StateError('Firebase unavailable');
+  }
+
   @override
   Future<NotificationSettings> requestPermission({
     bool alert = true,
@@ -146,7 +242,11 @@ class _Messaging extends Fake implements FirebaseMessaging {
     bool provisional = false,
     bool sound = true,
     bool providesAppNotificationSettings = false,
-  }) async => _Settings(status);
+  }) async {
+    permissionRequests++;
+    return _Settings(status);
+  }
+
   @override
   Future<String?> getToken({
     String? vapidKey,

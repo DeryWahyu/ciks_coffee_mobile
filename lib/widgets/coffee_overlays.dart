@@ -297,11 +297,15 @@ class CoffeeDialog extends StatelessWidget {
 Future<T?> showCoffeeSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
+  bool isDismissible = true,
+  bool enableDrag = true,
 }) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    isDismissible: isDismissible,
+    enableDrag: enableDrag,
     backgroundColor: Colors.transparent,
     barrierColor: CoffeeColors.ink.withValues(alpha: 0.35),
     sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
@@ -319,6 +323,7 @@ class CoffeeSheet extends StatelessWidget {
     this.subtitle,
     this.footer,
     this.dismissLabel = 'Tutup',
+    this.canDismiss = true,
   });
 
   final String title;
@@ -326,6 +331,7 @@ class CoffeeSheet extends StatelessWidget {
   final Widget child;
   final Widget? footer;
   final String dismissLabel;
+  final bool canDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -393,7 +399,9 @@ class CoffeeSheet extends StatelessWidget {
                       ),
                       IconButton(
                         tooltip: dismissLabel,
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: canDismiss
+                            ? () => Navigator.of(context).pop()
+                            : null,
                         icon: const Icon(
                           Icons.close_rounded,
                           color: CoffeeColors.muted,

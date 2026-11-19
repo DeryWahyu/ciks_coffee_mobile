@@ -153,6 +153,55 @@ void main() {
   );
 
   testWidgets(
+    'round table status dots do not overlap labels at small sizes or large text',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1500, 1100));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final data = _fixture(round: true);
+      for (final scale in [1.0, 2.0]) {
+        for (final size in [
+          const Size(320, 230),
+          const Size(700, 500),
+          const Size(1400, 1000),
+        ]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: size.width,
+                    height: size.height,
+                    child: FloorPlanView(data: data, onTableTap: (_) {}),
+                  ),
+                ),
+              ),
+            ),
+          );
+          for (final table in data.tables) {
+            final dot = tester.getRect(
+              find.byKey(ValueKey('table-status-dot-${table.id}')),
+            );
+            final code = tester.getRect(find.text(table.code));
+            expect(
+              dot.bottom,
+              lessThan(code.top),
+              reason: 'Table ${table.code}, canvas $size, text $scale',
+            );
+            expect(dot.overlaps(code), isFalse);
+          }
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets(
     'uses the supplied raster with contain and keeps editor rotation and size',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -253,6 +302,7 @@ CoffeeTableModel _table(int id, String status) =>
     CoffeeTableModel.fromJson(_tableJson(id, status));
 TableLayoutData _fixture({
   bool background = false,
+  bool round = false,
   List<Map<String, dynamic>> elements = const [],
 }) => TableLayoutData.fromJson({
   'layout': {
@@ -282,6 +332,9 @@ TableLayoutData _fixture({
       'reserved',
       'unavailable',
     ].asMap().entries)
-      _tableJson(entry.key + 1, entry.value),
+      {
+        ..._tableJson(entry.key + 1, entry.value),
+        if (round) ...{'shape': 'round', 'width': 6, 'height': 8},
+      },
   ],
 });

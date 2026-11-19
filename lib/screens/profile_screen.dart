@@ -1,113 +1,307 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/app_info_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/user_message.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/coffee_overlays.dart';
 import '../widgets/navigation_safe_content.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/profile_forms.dart';
 import '../providers/language_provider.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.apiService, this.notificationService});
+  const ProfileScreen({
+    super.key,
+    this.apiService,
+    this.notificationService,
+    this.appInfoService,
+  });
   final ApiService? apiService;
   final PushNotificationService? notificationService;
-
+  final AppInfoService? appInfoService;
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with WidgetsBindingObserver {
   late final ApiService _apiService = widget.apiService ?? ApiService();
+  late final AppInfoService _appInfo =
+      widget.appInfoService ?? AppInfoService();
+  PushNotificationService get _push =>
+      widget.notificationService ?? PushNotificationService.instance;
   UserModel? _user;
-  String? _profileError;
-  bool _isLoading = true;
-  bool _isLoggingOut = false;
-  bool _notificationsEnabled = true;
+  String? _profileError, _appVersion;
+  bool _isLoading = true,
+      _isLoggingOut = false,
+      _logoutPromptOpen = false,
+      _notificationBusy = true,
+      _notificationsEnabled = false;
+  NotificationActivation? _notificationState;
+  int _profileRequest = 0, _notificationRequest = 0;
+  final _notificationTimers = <Timer>{};
+  final _notificationWaiters = <Completer<NotificationActivation>>{};
+  String _t(String id, String en) =>
+      context.read<LanguageProvider>().isEnglish ? en : id;
 
   @override
   void initState() {
     super.initState();
-    _fetchProfile();
-    _loadNotificationPref();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_fetchProfile());
+    unawaited(_loadNotificationStatus());
+    unawaited(_loadVersion());
   }
 
-  Future<void> _loadNotificationPref() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      });
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (final timer in _notificationTimers) {
+      timer.cancel();
+    }
+    for (final waiter in _notificationWaiters.toList()) {
+      if (!waiter.isCompleted) {
+        waiter.complete(
+          const NotificationActivation(
+            NotificationActivationStatus.serverUnavailable,
+          ),
+        );
+      }
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        !_notificationBusy &&
+        !_isLoggingOut) {
+      unawaited(_loadNotificationStatus());
     }
   }
 
-  Future<void> _toggleNotification(bool value) async {
-    final activation =
-        await (widget.notificationService ?? PushNotificationService.instance)
-            .setEnabled(value);
-    if (!mounted) return;
+  Future<void> _loadVersion() async {
+    final version = await _appInfo.version();
+    if (mounted) setState(() => _appVersion = version);
+  }
 
-    setState(() {
-      _notificationsEnabled = value && activation.enabled;
-    });
-
-    if (value && !activation.enabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.read<LanguageProvider>().tr(activation.message),
+  Future<NotificationActivation> _waitForNotification(
+    Future<NotificationActivation> request,
+  ) {
+    final result = Completer<NotificationActivation>();
+    final timer = Timer(const Duration(seconds: 12), () {
+      if (!result.isCompleted) {
+        result.complete(
+          const NotificationActivation(
+            NotificationActivationStatus.serverUnavailable,
           ),
+        );
+      }
+    });
+    _notificationTimers.add(timer);
+    _notificationWaiters.add(result);
+    request.then<void>(
+      (value) {
+        if (!result.isCompleted) result.complete(value);
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!result.isCompleted) {
+          result.complete(
+            const NotificationActivation(
+              NotificationActivationStatus.serverUnavailable,
+            ),
+          );
+        }
+      },
+    );
+    return result.future.whenComplete(() {
+      timer.cancel();
+      _notificationTimers.remove(timer);
+      _notificationWaiters.remove(result);
+    });
+  }
+
+  Future<void> _loadNotificationStatus() async {
+    final request = ++_notificationRequest;
+    if (mounted) setState(() => _notificationBusy = true);
+    NotificationActivation result;
+    try {
+      result = await _waitForNotification(_push.getStatus());
+    } catch (_) {
+      result = const NotificationActivation(
+        NotificationActivationStatus.serverUnavailable,
+      );
+    }
+    if (!mounted || request != _notificationRequest) return;
+    setState(() {
+      _notificationBusy = false;
+      _notificationState = result;
+      _notificationsEnabled = result.enabled;
+    });
+  }
+
+  void _message(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+  Future<void> _toggleNotification(bool value) async {
+    if (_notificationBusy || _isLoggingOut) return;
+    _notificationRequest++;
+    setState(() => _notificationBusy = true);
+    NotificationActivation result;
+    try {
+      result = await _waitForNotification(_push.setEnabled(value));
+    } catch (_) {
+      result = const NotificationActivation(
+        NotificationActivationStatus.serverUnavailable,
+      );
+    }
+    if (!mounted) return;
+    final success = value
+        ? result.enabled
+        : result.status == NotificationActivationStatus.disabled;
+    setState(() {
+      _notificationBusy = false;
+      _notificationState = result;
+      if (success) _notificationsEnabled = value;
+    });
+    if (!success) _message(result.message);
+  }
+
+  Future<void> _openNotificationSettings() async {
+    final opened = await _appInfo.openNotificationSettings();
+    if (mounted && !opened) {
+      _message(
+        _t(
+          'Pengaturan belum dapat dibuka. Buka pengaturan notifikasi Ciks Coffee melalui pengaturan perangkat.',
+          'Open your device settings and choose Ciks Coffee notifications.',
         ),
       );
     }
   }
 
   Future<void> _fetchProfile() async {
-    setState(() {
-      _isLoading = true;
-      _profileError = null;
-    });
-    final result = await _apiService.getProfile();
-    if (mounted) {
+    final request = ++_profileRequest;
+    if (_user == null) {
       setState(() {
-        _isLoading = false;
-        if (result['success']) {
-          _user = UserModel.fromJson(result['data']);
-        } else {
-          _profileError = UserMessage.display(
-            result['message'],
-            fallback: 'Gagal memuat profil. Periksa koneksi lalu coba lagi.',
-          );
-        }
+        _isLoading = true;
+        _profileError = null;
       });
+    }
+    Map<String, dynamic> result;
+    try {
+      result = await _apiService.getProfile();
+    } catch (_) {
+      result = {
+        'success': false,
+        'message': 'Profil belum dapat dimuat. Periksa koneksi lalu coba lagi.',
+      };
+    }
+    if (!mounted || request != _profileRequest) return;
+    UserModel? user;
+    if (result['success'] == true) {
+      try {
+        user = UserModel.fromJson(Map<String, dynamic>.from(result['data']));
+      } catch (_) {
+        result = {
+          'success': false,
+          'message': 'Data profil tidak lengkap. Silakan coba lagi.',
+        };
+      }
+    }
+    setState(() {
+      _isLoading = false;
+      if (user != null) {
+        _user = user;
+        _profileError = null;
+      } else {
+        _profileError = UserMessage.display(
+          result['message'],
+          fallback: 'Gagal memuat profil.',
+        );
+      }
+    });
+    if (user == null && _user != null) _message(_profileError!);
+  }
+
+  Future<void> _editProfile() async {
+    if (_user == null || _isLoggingOut) return;
+    final user = await showCoffeeSheet<UserModel>(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => ProfileFormSheet(api: _apiService, user: _user),
+    );
+    if (!mounted || user == null) return;
+    _profileRequest++;
+    setState(() {
+      _user = user;
+      _profileError = null;
+      _isLoading = false;
+    });
+    _message(_t('Profil berhasil diperbarui.', 'Profile updated.'));
+  }
+
+  Future<void> _changePassword() async {
+    if (_isLoggingOut) return;
+    final changed = await showCoffeeSheet<bool>(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => ProfileFormSheet(
+        api: _apiService,
+        deviceToken: _currentDeviceToken(),
+      ),
+    );
+    if (mounted && changed == true) {
+      try {
+        _push.invalidateRegistration();
+      } catch (_) {}
+      unawaited(_loadNotificationStatus());
+      _message(
+        _t(
+          'Kata sandi berhasil diperbarui. Sesi di perangkat lain telah diakhiri.',
+          'Password changed. Other devices have been signed out.',
+        ),
+      );
+    }
+  }
+
+  String? _currentDeviceToken() {
+    try {
+      return _push.registeredToken;
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> _logout() async {
-    if (_isLoggingOut) return;
-    final lang = context.read<LanguageProvider>();
-    _isLoggingOut = true;
+    if (_isLoggingOut || _logoutPromptOpen) return;
+    _logoutPromptOpen = true;
     try {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => CoffeeDialog(
-          title: lang.isEnglish ? 'Take a little break?' : 'Keluar dari akun?',
-          message: lang.tr('Apakah kamu yakin ingin keluar dari akun ini?'),
+          title: _t('Keluar dari akun?', 'Log out?'),
+          message: _t(
+            'Apakah kamu yakin ingin keluar dari akun ini?',
+            'Are you sure you want to log out?',
+          ),
           icon: Icons.logout_rounded,
           accent: CoffeeColors.danger,
-          dismissLabel: lang.tr('Tutup'),
+          dismissLabel: _t('Tutup', 'Close'),
           actions: [
             CoffeeButton(
-              label: lang.tr('Keluar'),
+              label: _t('Keluar', 'Log out'),
               destructive: true,
               onPressed: () => Navigator.of(ctx).pop(true),
             ),
             CoffeeButton(
-              label: lang.tr('Batal'),
+              label: _t('Batal', 'Cancel'),
               secondary: true,
               onPressed: () => Navigator.of(ctx).pop(false),
             ),
@@ -115,40 +309,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
       if (confirmed != true || !mounted) return;
-      final deviceToken = await PushNotificationService.instance.currentToken();
-      await _apiService.logout(deviceToken: deviceToken);
-      await PushNotificationService.instance.onLoggedOut();
+      setState(() => _isLoggingOut = true);
+      String? token;
+      try {
+        token = await _push.currentToken().timeout(const Duration(seconds: 3));
+      } catch (_) {
+        /* Logout still works if notification services are unavailable. */
+      }
+      await _apiService.logout(deviceToken: token);
+      try {
+        await _push.onLoggedOut().timeout(const Duration(seconds: 3));
+      } catch (_) {
+        /* Local account credentials have already been cleared. */
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (_) => false,
       );
+    } catch (_) {
+      if (mounted) {
+        _message(
+          _t(
+            'Belum dapat keluar dari akun. Silakan coba lagi.',
+            'Could not log out. Please try again.',
+          ),
+        );
+      }
     } finally {
-      _isLoggingOut = false;
+      _logoutPromptOpen = false;
+      if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 
   void _showAboutDialog() {
-    final lang = context.read<LanguageProvider>();
     showDialog<void>(
       context: context,
       builder: (ctx) => CoffeeDialog(
         title: 'Ciks Coffee',
-        message: lang.tr(
-          'Aplikasi pemesanan kopi Ciks Coffee.\nNikmati kopi favoritmu dengan mudah!',
+        message: _t(
+          'Aplikasi pemesanan Ciks Coffee dengan pembayaran QRIS dan pemantauan status pesanan.',
+          'Ciks Coffee ordering app with QRIS payments and order tracking.',
         ),
         content: Text(
-          lang.tr('Versi 1.0.0'),
+          _appVersion == null
+              ? _t(
+                  'Informasi versi belum tersedia.',
+                  'Version information is unavailable.',
+                )
+              : '${_t('Versi', 'Version')} $_appVersion',
           style: const TextStyle(
             fontFamily: 'CiksSans',
             color: CoffeeColors.muted,
-            fontSize: 12,
           ),
         ),
-        dismissLabel: lang.tr('Tutup'),
+        dismissLabel: _t('Tutup', 'Close'),
         actions: [
           CoffeeButton(
-            label: lang.tr('Tutup'),
+            label: _t('Tutup', 'Close'),
             onPressed: () => Navigator.of(ctx).pop(),
           ),
         ],
@@ -157,43 +375,154 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showPrivacyPolicyDialog() {
-    final lang = context.read<LanguageProvider>();
-    showDialog<void>(
+    showCoffeeSheet<void>(
       context: context,
-      builder: (ctx) => CoffeeDialog(
-        title: lang.tr('Kebijakan Privasi'),
-        icon: Icons.privacy_tip_outlined,
-        message: lang.isEnglish
-            ? 'Your privacy is important to us. We collect your data only for order processing and improving service quality. We do not share your data with third parties without your explicit consent.'
-            : 'Privasi Anda penting bagi kami. Kami mengumpulkan data Anda hanya untuk keperluan pemrosesan pesanan dan peningkatan layanan. Kami tidak membagikan data Anda kepada pihak ketiga tanpa izin Anda.',
-        dismissLabel: lang.tr('Tutup'),
-        actions: [
-          CoffeeButton(
-            label: lang.tr('Tutup'),
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-        ],
+      builder: (_) => CoffeeSheet(
+        title: _t('Kebijakan Privasi', 'Privacy Policy'),
+        dismissLabel: _t('Tutup', 'Close'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoBlock(
+              _t('Data akun', 'Account data'),
+              _t(
+                'Nama, email, dan nomor telepon digunakan untuk akun dan identitas pelanggan pada pemesanan.',
+                'Your name, email, and phone number are used for your account and ordering identity.',
+              ),
+            ),
+            _infoBlock(
+              _t('Pesanan dan bukti pembayaran', 'Orders and payment proof'),
+              _t(
+                'Pesanan disimpan pada sistem Ciks Coffee. Bukti pembayaran QRIS diperiksa oleh karyawan sebelum pesanan diproses.',
+                'Orders are stored in the Ciks Coffee system. Staff review QRIS payment proof before processing orders.',
+              ),
+            ),
+            _infoBlock(
+              _t('Notifikasi perangkat', 'Device notifications'),
+              _t(
+                'Identitas notifikasi perangkat didaftarkan untuk mengirim pembaruan pesanan melalui Firebase. Notifikasi dapat dinonaktifkan di menu profil atau pengaturan perangkat.',
+                'A device notification identifier is registered to send order updates through Firebase. You can turn notifications off in your profile or device settings.',
+              ),
+            ),
+            _infoBlock(
+              _t('Mengelola akun', 'Manage your account'),
+              _t(
+                'Anda dapat mengubah profil, mengganti kata sandi, dan keluar dari akun. Untuk bantuan terkait data akun atau pesanan, temui kasir Ciks Coffee.',
+                'You can update your profile, change your password, and log out. Ask the Ciks Coffee cashier for help with account or order data.',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showHelpDialog() {
-    final lang = context.read<LanguageProvider>();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => CoffeeDialog(
-        title: lang.tr('Bantuan'),
-        icon: Icons.support_agent_rounded,
-        message: lang.isEnglish
-            ? 'Need help with your order or the application? Contact our customer support team.\n\nEmail: support@cikscoffee.com\nPhone: +62 812-3456-7890'
-            : 'Butuh bantuan terkait pesanan atau penggunaan aplikasi? Hubungi tim layanan pelanggan kami.\n\nEmail: support@cikscoffee.com\nTelepon: +62 812-3456-7890',
-        dismissLabel: lang.tr('Tutup'),
-        actions: [
-          CoffeeButton(
-            label: lang.tr('Tutup'),
-            onPressed: () => Navigator.of(ctx).pop(),
+  Widget _infoBlock(String title, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            fontWeight: FontWeight.w700,
+            color: CoffeeColors.ink,
           ),
-        ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'CiksSans',
+            height: 1.6,
+            color: CoffeeColors.muted,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  void _showHelpDialog() {
+    final questions = [
+      (
+        _t('Bagaimana cara memesan?', 'How do I order?'),
+        _t(
+          'Pilih menu di Beranda, masukkan ke keranjang, lalu lanjutkan pembayaran menggunakan QRIS.',
+          'Choose items on Home, add them to your cart, then continue with QRIS payment.',
+        ),
+      ),
+      (
+        _t('Mengapa perlu bukti pembayaran?', 'Why is payment proof required?'),
+        _t(
+          'Unggah bukti setelah membayar QRIS. Karyawan memeriksa bukti sebelum pesanan masuk ke antrean.',
+          'Upload proof after paying with QRIS. Staff verify it before the order enters the queue.',
+        ),
+      ),
+      (
+        _t(
+          'Sudah membayar tetapi muncul kendala?',
+          'Already paid but something went wrong?',
+        ),
+        _t(
+          'Jangan membayar ulang. Periksa menu Status dan sesi pembayaran di Keranjang. Tunjukkan nomor pesanan serta bukti kepada kasir jika perlu bantuan.',
+          'Do not pay again. Check Status and the payment session in Cart. Show the order number and proof to the cashier if you need help.',
+        ),
+      ),
+      (
+        _t('Bagaimana mengambil pesanan?', 'How do I collect my order?'),
+        _t(
+          'Pantau menu Status. Saat pesanan siap, ambil di kasir lalu konfirmasikan bahwa pesanan sudah diambil melalui aplikasi.',
+          'Track your order in Status. When it is ready, collect it from the cashier and confirm pickup in the app.',
+        ),
+      ),
+      (
+        _t(
+          'Tidak bisa masuk atau perlu bantuan lain?',
+          'Cannot log in or need more help?',
+        ),
+        _t(
+          'Temui kasir Ciks Coffee. Sampaikan masalah dan nomor pesanan jika terkait transaksi.',
+          'Ask the Ciks Coffee cashier. Describe the issue and provide your order number for transaction questions.',
+        ),
+      ),
+    ];
+    showCoffeeSheet<void>(
+      context: context,
+      builder: (_) => CoffeeSheet(
+        title: _t('Bantuan', 'Help'),
+        dismissLabel: _t('Tutup', 'Close'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final item in questions)
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(
+                  item.$1,
+                  style: const TextStyle(
+                    fontFamily: 'CiksSans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      item.$2,
+                      style: const TextStyle(
+                        fontFamily: 'CiksSans',
+                        color: CoffeeColors.muted,
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -203,183 +532,179 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showCoffeeSheet<void>(
       context: context,
       builder: (_) => CoffeeSheet(
-        title: lang.isEnglish ? 'Choose language' : 'Pilih Bahasa',
-        dismissLabel: lang.tr('Tutup'),
+        title: _t('Pilih Bahasa', 'Choose language'),
+        dismissLabel: _t('Tutup', 'Close'),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildLanguageOption('Bahasa Indonesia', '🇮🇩', false),
-            const SizedBox(height: 12),
-            _buildLanguageOption('English', '🇬🇧', true),
+            for (final option in [
+              (false, 'Bahasa Indonesia'),
+              (true, 'English'),
+            ])
+              ListTile(
+                selectedColor: CoffeeColors.ink,
+                selectedTileColor: CoffeeColors.cream,
+                title: Text(option.$2),
+                selected: lang.isEnglish == option.$1,
+                leading: Icon(
+                  lang.isEnglish == option.$1
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final saved = await lang.toggleLanguage(option.$1);
+                  if (mounted) {
+                    _message(
+                      saved
+                          ? _t(
+                              'Bahasa berhasil diperbarui.',
+                              'Language updated.',
+                            )
+                          : _t(
+                              'Bahasa belum dapat disimpan. Silakan coba lagi.',
+                              'Language could not be saved. Please try again.',
+                            ),
+                    );
+                  }
+                },
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLanguageOption(String name, String flag, bool isEnglishOption) {
-    final lang = Provider.of<LanguageProvider>(context);
-    final isSelected = lang.isEnglish == isEnglishOption;
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        lang.toggleLanguage(isEnglishOption);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              lang.isEnglish
-                  ? 'Language changed to $name'
-                  : 'Bahasa diubah ke $name',
-            ),
-            backgroundColor: const Color(0xFF4A3022),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+  Widget _section(String title, List<Widget> children) => Padding(
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+            color: const Color(0xFF8B7355),
           ),
-        );
-      },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF4A3022)
-                : const Color(0xFFD2B48C),
-          ),
-          borderRadius: BorderRadius.circular(14),
-          color: isSelected
-              ? const Color(0xFF4A3022).withValues(alpha: 0.05)
-              : null,
         ),
-        child: Row(
-          children: [
-            Text(flag, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                name,
-                style: GoogleFonts.inter(
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: const Color(0xFF4A3022),
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: Color(0xFF4A3022),
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+        const SizedBox(height: 10),
+        _buildMenuCard(children),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(context);
-
+    final lang = context.watch<LanguageProvider>();
     return Scaffold(
       backgroundColor: const Color(0xFFFAF7F3),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF5D3A1A)),
+              child: CircularProgressIndicator(color: CoffeeColors.ink),
             )
           : _user == null
           ? NavigationSafeContent(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.error_outline,
                     size: 48,
-                    color: Colors.red.shade300,
+                    color: CoffeeColors.danger,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     lang.tr(_profileError ?? 'Gagal memuat profil.'),
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(color: const Color(0xFF4A3022)),
+                    style: const TextStyle(
+                      fontFamily: 'CiksSans',
+                      color: CoffeeColors.ink,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  CoffeeButton(
+                    label: lang.tr('Coba Lagi'),
                     onPressed: _fetchProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A3022),
-                    ),
-                    child: Text(
-                      lang.tr('Coba Lagi'),
-                      style: GoogleFonts.inter(color: Colors.white),
-                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  CoffeeButton(
+                    key: const ValueKey('profile-logout'),
+                    label: lang.tr('Keluar dari Akun'),
+                    secondary: true,
+                    loading: _isLoggingOut,
+                    onPressed: _logout,
                   ),
                 ],
               ),
             )
-          : CustomScrollView(
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              slivers: [
-                SliverToBoxAdapter(child: _buildProfileHero(lang)),
-
-                // Menu Options
-                SliverToBoxAdapter(
-                  child: Padding(
+          : RefreshIndicator(
+              onRefresh: _fetchProfile,
+              color: CoffeeColors.ink,
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildProfileHero(lang)),
+                  SliverPadding(
                     padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    sliver: SliverList.list(
                       children: [
-                        // Account Section
-                        Text(
-                          lang.tr('AKUN'),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: const Color(0xFF8B7355),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildMenuCard([
+                        _section(lang.tr('AKUN'), [
                           _buildMenuItem(
-                            icon: Icons.person_outline,
-                            label: lang.tr('Informasi Pribadi'),
-                            subtitle: _user!.email,
-                            onTap: () => _showInfoSheet(),
+                            icon: Icons.edit_outlined,
+                            label: _t('Edit profil', 'Edit profile'),
+                            subtitle: _t(
+                              'Nama, email, dan nomor telepon',
+                              'Name, email, and phone number',
+                            ),
+                            onTap: _editProfile,
                           ),
                           _buildMenuItem(
-                            icon: Icons.phone_outlined,
-                            label: lang.tr('Nomor Telepon'),
-                            subtitle: _user!.phone ?? lang.tr('Belum diatur'),
-                            onTap: () => _showInfoSheet(),
+                            icon: Icons.lock_outline,
+                            label: _t('Ubah kata sandi', 'Change password'),
+                            subtitle: _t(
+                              'Amankan akses akun',
+                              'Secure your account',
+                            ),
+                            onTap: _changePassword,
                           ),
                         ]),
-                        const SizedBox(height: 24),
-
-                        // Preferences Section
-                        Text(
-                          lang.tr('PREFERENSI'),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: const Color(0xFF8B7355),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildMenuCard([
+                        _section(lang.tr('PREFERENSI'), [
                           _buildMenuItemSwitch(
                             icon: Icons.notifications_outlined,
                             label: lang.tr('Notifikasi'),
-                            subtitle: _notificationsEnabled
+                            subtitle: _notificationBusy
+                                ? _t(
+                                    'Memeriksa notifikasi?',
+                                    'Checking notifications?',
+                                  )
+                                : _notificationState?.status ==
+                                      NotificationActivationStatus
+                                          .serverUnavailable
+                                ? _t('Belum tersambung', 'Not connected')
+                                : _notificationsEnabled
                                 ? lang.tr('Aktif')
                                 : lang.tr('Nonaktif'),
                             value: _notificationsEnabled,
-                            onChanged: _toggleNotification,
+                            onChanged: _notificationBusy || _isLoggingOut
+                                ? null
+                                : _toggleNotification,
                           ),
+                          if (_notificationState?.status ==
+                              NotificationActivationStatus.permissionDenied)
+                            TextButton.icon(
+                              onPressed: _openNotificationSettings,
+                              icon: const Icon(Icons.settings_outlined),
+                              label: Text(
+                                _t(
+                                  'Buka pengaturan notifikasi',
+                                  'Open notification settings',
+                                ),
+                              ),
+                            ),
                           _buildMenuItem(
                             icon: Icons.language,
                             label: lang.tr('Bahasa'),
@@ -389,25 +714,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onTap: _showLanguageSheet,
                           ),
                         ]),
-                        const SizedBox(height: 24),
-
-                        // Info Section
-                        Text(
-                          lang.tr('LAINNYA'),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: const Color(0xFF8B7355),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildMenuCard([
+                        _section(lang.tr('LAINNYA'), [
                           _buildMenuItem(
-                            icon: Icons.info_outline,
-                            label: lang.tr('Tentang Aplikasi'),
-                            subtitle: lang.tr('Versi 1.0.0'),
-                            onTap: _showAboutDialog,
+                            icon: Icons.help_outline,
+                            label: lang.tr('Bantuan'),
+                            subtitle: _t(
+                              'Panduan pemesanan dan QRIS',
+                              'Ordering and QRIS guide',
+                            ),
+                            onTap: _showHelpDialog,
                           ),
                           _buildMenuItem(
                             icon: Icons.privacy_tip_outlined,
@@ -415,39 +730,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onTap: _showPrivacyPolicyDialog,
                           ),
                           _buildMenuItem(
-                            icon: Icons.help_outline,
-                            label: lang.tr('Bantuan'),
-                            onTap: _showHelpDialog,
+                            icon: Icons.info_outline,
+                            label: lang.tr('Tentang Aplikasi'),
+                            subtitle: _appVersion == null
+                                ? _t('Informasi aplikasi', 'App information')
+                                : '${_t('Versi', 'Version')} $_appVersion',
+                            onTap: _showAboutDialog,
                           ),
                         ]),
-                        const SizedBox(height: 24),
-
-                        // Logout Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            key: const ValueKey('profile-logout'),
-                            onPressed: _logout,
-                            icon: const Icon(Icons.logout, size: 18),
-                            label: Text(
-                              lang.tr('Keluar dari Akun'),
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFF4F1),
-                              foregroundColor: const Color(0xFFD75A4A),
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: const BorderSide(
-                                  color: Color(0xFFF1CBC5),
-                                ),
-                              ),
-                              elevation: 0,
-                            ),
-                          ),
+                        CoffeeButton(
+                          key: const ValueKey('profile-logout'),
+                          label: lang.tr('Keluar dari Akun'),
+                          icon: Icons.logout_rounded,
+                          destructive: true,
+                          loading: _isLoggingOut,
+                          onPressed: _logout,
                         ),
                         SizedBox(
                           height: 24 + MediaQuery.paddingOf(context).bottom,
@@ -455,8 +752,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
@@ -520,13 +817,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          lang.tr('Profil'),
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
+                        Expanded(
+                          child: Text(
+                            lang.tr('Profil'),
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.4,
+                            ),
                           ),
                         ),
                         Container(
@@ -563,8 +862,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             radius: 30,
                             backgroundColor: const Color(0xFFFFF8F0),
                             child: Text(
-                              user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
+                              user.name.trim().isNotEmpty
+                                  ? user.name
+                                        .trim()
+                                        .characters
+                                        .first
+                                        .toUpperCase()
                                   : '?',
                               style: GoogleFonts.inter(
                                 fontSize: 25,
@@ -620,13 +923,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       color: Colors.white,
                                     ),
                                     const SizedBox(width: 5),
-                                    Text(
-                                      lang.tr(user.role.toUpperCase()),
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.9,
+                                    Flexible(
+                                      child: Text(
+                                        lang.tr(user.role.toUpperCase()),
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.9,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -756,7 +1061,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String subtitle,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -804,75 +1109,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showInfoSheet() {
-    if (_user == null) return;
-    final lang = context.read<LanguageProvider>();
-    showCoffeeSheet<void>(
-      context: context,
-      builder: (_) => CoffeeSheet(
-        title: lang.tr('Informasi Pribadi'),
-        dismissLabel: lang.tr('Tutup'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildInfoRow(Icons.person_outline, lang.tr('Nama'), _user!.name),
-            const SizedBox(height: 16),
-            _buildInfoRow(Icons.email_outlined, 'Email', _user!.email),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              Icons.phone_outlined,
-              lang.tr('Telepon'),
-              _user!.phone ?? lang.tr('Belum diatur'),
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              Icons.badge_outlined,
-              lang.tr('Peran'),
-              lang.tr(_user!.role.toUpperCase()),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5E6D3),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: const Color(0xFF4A3022)),
-        ),
-        const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: const Color(0xFF4A3022).withValues(alpha: 0.5),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF4A3022),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

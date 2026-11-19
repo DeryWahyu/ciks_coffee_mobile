@@ -180,6 +180,7 @@ class ApiService {
       'success': false,
       'status': response.statusCode,
       'message': UserMessage.fromResponse(data, response.statusCode),
+      if (data['errors'] is Map) 'errors': data['errors'],
     };
   }
 
@@ -355,7 +356,114 @@ class ApiService {
 
   Future<Map<String, dynamic>> getActiveOrders() => _getList('/orders/active');
   Future<Map<String, dynamic>> getOrderHistory() => _getList('/orders/history');
-  Future<Map<String, dynamic>> getProfile() => _get('/user', envelope: false);
+  Future<Map<String, dynamic>> getProfile() async {
+    final version = sessionVersion;
+    final result = await _get('/user', envelope: false);
+    if (result['success'] == true) {
+      try {
+        final user = UserModel.fromJson(
+          Map<String, dynamic>.from(result['data']),
+        );
+        if (user.name.trim().isEmpty) throw const FormatException();
+        await _rememberProfileName(user.name, version);
+      } catch (_) {
+        return {
+          'success': false,
+          'message':
+              'Data profil dari server tidak lengkap. Muat ulang lalu coba lagi.',
+        };
+      }
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String email,
+    String? phone,
+    String? currentPassword,
+  }) async {
+    final version = sessionVersion;
+    try {
+      final response = await _request(
+        'PATCH',
+        '/user',
+        body: {
+          'name': name.trim(),
+          'email': email.trim(),
+          'phone': phone?.trim(),
+          'current_password': ?currentPassword,
+        },
+      );
+      if (response.statusCode != 200) return _failure(response);
+      final user = UserModel.fromJson(
+        Map<String, dynamic>.from(_decode(response.body)['user']),
+      );
+      if (version != sessionVersion) {
+        return {
+          'success': false,
+          'message': 'Sesi akun telah berubah. Silakan masuk kembali.',
+        };
+      }
+      await _rememberProfileName(user.name, version);
+      return {
+        'success': true,
+        'user': user,
+        'message': 'Profil berhasil diperbarui.',
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message':
+            'Profil belum dapat disimpan. Periksa koneksi lalu coba lagi.',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String password,
+    required String confirmation,
+    String? deviceToken,
+  }) async {
+    try {
+      final response = await _request(
+        'PUT',
+        '/user/password',
+        body: {
+          'current_password': currentPassword,
+          'password': password,
+          'password_confirmation': confirmation,
+          'device_token': ?deviceToken,
+        },
+      );
+      if (response.statusCode != 200) return _failure(response);
+      if (_decode(response.body)['message'] is! String) {
+        throw const FormatException('Invalid password update response');
+      }
+      return {
+        'success': true,
+        'message':
+            'Kata sandi berhasil diperbarui. Sesi di perangkat lain telah diakhiri.',
+      };
+    } catch (_) {
+      return {
+        'success': false,
+        'message':
+            'Kata sandi belum dapat diperbarui. Periksa koneksi lalu coba lagi.',
+      };
+    }
+  }
+
+  Future<void> _rememberProfileName(String name, int version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (version == sessionVersion) await prefs.setString('user_name', name);
+    } catch (_) {
+      // A cache failure must not turn a successful server update into a failure.
+    }
+  }
+
   Future<Map<String, dynamic>> confirmPickup(int orderId) async {
     try {
       final r = await _request('POST', '/orders/$orderId/pickup');

@@ -18,7 +18,6 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'table_availability_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0, this.apiService});
@@ -63,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
     _fetchCategories();
     _fetchProducts();
-    _fetchProfile();
     _stockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
           (_currentIndex == 0 || _currentIndex == 1)) {
@@ -90,17 +88,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _fetchProducts(silent: true);
-  }
-
-  Future<void> _fetchProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final result = await _apiService.getProfile();
-    if (result['success'] && result['data'] != null) {
-      final name = result['data']['name']?.toString();
-      if (name != null && name.isNotEmpty) {
-        await prefs.setString('user_name', name);
-      }
-    }
   }
 
   Future<void> _fetchCategories() async {
@@ -173,7 +160,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _selectedCategoryId = categoryId;
     });
     _fetchProducts();
-    _fetchProfile();
   }
 
   String _formatPrice(dynamic price) {

@@ -75,6 +75,15 @@ class PushNotificationService {
   bool _initialized = false;
   bool _authenticated = false;
   bool _pendingStatusNavigation = false;
+  String? _registeredToken;
+  int? _registeredSession;
+  String? get registeredToken =>
+      _registeredSession == ApiService.sessionVersion ? _registeredToken : null;
+
+  void invalidateRegistration() {
+    _registeredToken = null;
+    _registeredSession = null;
+  }
 
   Stream<Map<String, dynamic>> get orderStatusUpdates =>
       _orderStatusUpdates.stream;
@@ -126,7 +135,12 @@ class PushNotificationService {
     await syncToken();
   }
 
-  Future<NotificationActivation> syncToken() async {
+  Future<NotificationActivation> getStatus() =>
+      syncToken(requestPermission: false);
+
+  Future<NotificationActivation> syncToken({
+    bool requestPermission = true,
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     if (!(preferences.getBool(_preferenceKey) ?? true)) {
       return const NotificationActivation(
@@ -135,11 +149,13 @@ class PushNotificationService {
     }
 
     try {
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      final settings = requestPermission
+          ? await _messaging.requestPermission(
+              alert: true,
+              badge: true,
+              sound: true,
+            )
+          : await _messaging.getNotificationSettings();
       final isAuthorized =
           settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional;
@@ -157,7 +173,18 @@ class PushNotificationService {
         );
       }
 
+      if (_registeredToken == token &&
+          _registeredSession == ApiService.sessionVersion) {
+        return const NotificationActivation(
+          NotificationActivationStatus.enabled,
+        );
+      }
+      final session = ApiService.sessionVersion;
       final result = await _apiService.registerDeviceToken(token);
+      if (result['success'] == true && session == ApiService.sessionVersion) {
+        _registeredToken = token;
+        _registeredSession = session;
+      }
       return result['success'] == true
           ? const NotificationActivation(NotificationActivationStatus.enabled)
           : NotificationActivation(
@@ -177,7 +204,17 @@ class PushNotificationService {
     await preferences.setBool(_preferenceKey, enabled);
 
     if (!enabled) {
-      await unregisterCurrentDevice();
+      final removed = await unregisterCurrentDevice();
+      if (!removed) {
+        await preferences.setBool(_preferenceKey, true);
+        return const NotificationActivation(
+          NotificationActivationStatus.serverUnavailable,
+          reason:
+              'Notifikasi belum dapat dinonaktifkan. Periksa koneksi lalu coba lagi.',
+        );
+      }
+      _registeredToken = null;
+      _registeredSession = null;
       return const NotificationActivation(
         NotificationActivationStatus.disabled,
       );
@@ -198,22 +235,27 @@ class PushNotificationService {
     }
   }
 
-  Future<void> unregisterCurrentDevice() async {
+  Future<bool> unregisterCurrentDevice() async {
     final token = await currentToken();
+    var unregistered = false;
     if (token != null && token.isNotEmpty) {
-      await _apiService.unregisterDeviceToken(token);
+      unregistered = await _apiService.unregisterDeviceToken(token);
     }
 
     try {
       await _messaging.deleteToken();
+      return true;
     } catch (error) {
       debugPrint('[PushNotification] local token removal failed: $error');
+      return unregistered;
     }
   }
 
   Future<void> onLoggedOut() async {
     _authenticated = false;
     _pendingStatusNavigation = false;
+    _registeredToken = null;
+    _registeredSession = null;
 
     try {
       await _messaging.deleteToken();
@@ -232,7 +274,12 @@ class PushNotificationService {
     final preferences = await SharedPreferences.getInstance();
     if (!(preferences.getBool(_preferenceKey) ?? true)) return;
 
-    await _apiService.registerDeviceToken(token);
+    final session = ApiService.sessionVersion;
+    final result = await _apiService.registerDeviceToken(token);
+    if (result['success'] == true && session == ApiService.sessionVersion) {
+      _registeredToken = token;
+      _registeredSession = session;
+    }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {

@@ -139,14 +139,16 @@ class _SplashIdentity extends StatelessWidget {
           ? CrossAxisAlignment.start
           : CrossAxisAlignment.center,
       children: [
+        BrandWordmark(width: compact ? 132 : 154),
+        const SizedBox(height: 6),
         Text(
           'Ciks Coffee',
           textAlign: landscape ? TextAlign.start : TextAlign.center,
           style: TextStyle(
             fontFamily: 'CiksDisplay',
-            fontSize: compact ? 36 : 42,
+            fontSize: compact ? 20 : 24,
             fontWeight: FontWeight.w500,
-            letterSpacing: -1.1,
+            letterSpacing: 0.5,
             height: 1.2,
             color: BrandMark.espresso,
           ),

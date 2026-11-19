@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LanguageProvider with ChangeNotifier {
   static const String _prefKey = 'selected_language_english';
   bool _isEnglish = false;
+  int _revision = 0;
+  Future<void> _saveQueue = Future.value();
 
   bool get isEnglish => _isEnglish;
 
@@ -12,23 +14,39 @@ class LanguageProvider with ChangeNotifier {
   }
 
   Future<void> _loadFromPrefs() async {
+    final revision = _revision;
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getBool(_prefKey);
-      if (saved != null && saved != _isEnglish) {
+      if (revision == _revision && saved != null && saved != _isEnglish) {
         _isEnglish = saved;
         notifyListeners();
       }
     } catch (_) {}
   }
 
-  Future<void> toggleLanguage(bool isEnglish) async {
+  Future<bool> toggleLanguage(bool isEnglish) async {
+    final previous = _isEnglish;
+    final revision = ++_revision;
     _isEnglish = isEnglish;
     notifyListeners();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_prefKey, isEnglish);
-    } catch (_) {}
+      final save = _saveQueue.then((_) async {
+        final prefs = await SharedPreferences.getInstance();
+        if (!await prefs.setBool(_prefKey, isEnglish)) {
+          throw StateError('Bahasa belum dapat disimpan.');
+        }
+      });
+      _saveQueue = save.catchError((Object _) {});
+      await save;
+      return true;
+    } catch (_) {
+      if (revision == _revision) {
+        _isEnglish = previous;
+        notifyListeners();
+      }
+      return false;
+    }
   }
 
   String tr(String id) {
@@ -115,8 +133,7 @@ class LanguageProvider with ChangeNotifier {
       // Table Availability Screen
       'Ketersediaan meja': 'Table Availability',
       'Denah belum dapat dimuat': 'Floor plan could not be loaded',
-      'Silakan coba lagi dalam beberapa saat.':
-          'Please try again in a moment.',
+      'Silakan coba lagi dalam beberapa saat.': 'Please try again in a moment.',
       'meja tersedia': 'tables available',
       'dari': 'out of',
       'meja yang sedang ditampilkan': 'tables currently shown',
