@@ -102,7 +102,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     permissions:
       contents: write
     steps:
@@ -126,10 +126,10 @@ jobs:
           chmod 0600 "$RUNNER_TEMP/vps-ssh/key"
           trap 'rm -f "$RUNNER_TEMP/vps-ssh/key"' EXIT
           digest=$(sha256sum release/app-release.apk | cut -d ' ' -f 1)
-          ssh -T -i "$RUNNER_TEMP/vps-ssh/key" -p "$VPS_PORT" \
+          ssh -T -C -i "$RUNNER_TEMP/vps-ssh/key" -p "$VPS_PORT" \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$RUNNER_TEMP/vps-ssh/known_hosts" \
-            -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+            -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o IPQoS=none \
             "$VPS_USER@$VPS_HOST" "apk $GITHUB_SHA $digest" < release/app-release.apk
           curl --fail --silent --show-error --head --retry 3 --max-time 30 \
             https://cikscoffee.biz.id/downloads/cikscoffee-latest.apk
