@@ -16,7 +16,8 @@ void main() {
       await tester.binding.setSurfaceSize(size);
       await tester.pumpWidget(const MaterialApp(home: SplashScreen()));
       await tester.pump(const Duration(seconds: 1));
-      expect(find.byType(BrandMark), findsOneWidget);
+      expect(find.byType(BrandMark), findsNothing);
+      expect(find.byType(BrandWordmark), findsOneWidget);
       expect(find.text('Ciks Coffee'), findsOneWidget);
       expect(find.text('Rasa yang akrab.\nJeda yang berarti.'), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'Viewport $size');
@@ -65,7 +66,7 @@ void main() {
               .widget<FadeTransition>(
                 find
                     .ancestor(
-                      of: find.byType(BrandMark),
+                      of: find.byType(BrandWordmark),
                       matching: find.byType(FadeTransition),
                     )
                     .first,
@@ -75,7 +76,7 @@ void main() {
           1,
         );
         expect(find.byType(LinearProgressIndicator), findsNothing);
-        expect(find.bySemanticsLabel('Logo Ciks Coffee'), findsOneWidget);
+        expect(find.bySemanticsLabel('CIKS'), findsOneWidget);
         expect(find.bySemanticsLabel('Memuat Ciks Coffee'), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {

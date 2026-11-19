@@ -101,9 +101,6 @@ class _SplashScreenState extends State<SplashScreen>
                                     ).animate(_entrance),
                                     child: _SplashIdentity(
                                       compact: viewport.maxHeight < 620,
-                                      landscape:
-                                          viewport.maxWidth >
-                                          viewport.maxHeight * 1.25,
                                     ),
                                   ),
                                 ),
@@ -126,24 +123,21 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 class _SplashIdentity extends StatelessWidget {
-  const _SplashIdentity({required this.compact, required this.landscape});
+  const _SplashIdentity({required this.compact});
 
   final bool compact;
-  final bool landscape;
 
   @override
   Widget build(BuildContext context) {
-    final copy = Column(
+    return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: landscape
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         BrandWordmark(width: compact ? 132 : 154),
         const SizedBox(height: 6),
         Text(
           'Ciks Coffee',
-          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'CiksDisplay',
             fontSize: compact ? 20 : 24,
@@ -153,12 +147,12 @@ class _SplashIdentity extends StatelessWidget {
             color: BrandMark.espresso,
           ),
         ),
-        SizedBox(height: landscape ? 16 : 24),
+        const SizedBox(height: 24),
         Container(width: 28, height: 1, color: const Color(0xFFC5A583)),
-        SizedBox(height: landscape ? 16 : 24),
+        const SizedBox(height: 24),
         Text(
           'Rasa yang akrab.\nJeda yang berarti.',
-          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontFamily: 'CiksSans',
             fontSize: 14,
@@ -168,23 +162,6 @@ class _SplashIdentity extends StatelessWidget {
         ),
       ],
     );
-    return landscape
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const BrandMark(size: 112),
-              const SizedBox(width: 40),
-              Flexible(child: copy),
-            ],
-          )
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              BrandMark(size: compact ? 96 : 136),
-              SizedBox(height: compact ? 20 : 28),
-              copy,
-            ],
-          );
   }
 }
 

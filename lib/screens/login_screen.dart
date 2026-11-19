@@ -216,30 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Shared CIKS C mark
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8F0),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFD4A574).withValues(alpha: 0.6),
-                        width: 2.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    child: const BrandMark(size: 60),
-                  ),
-                  const SizedBox(height: 12),
-
                   // Brand name & tagline
                   const BrandWordmark(width: 132, color: BrandMark.cream),
                   const SizedBox(height: 4),

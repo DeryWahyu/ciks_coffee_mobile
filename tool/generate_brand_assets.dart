@@ -100,10 +100,10 @@ void main(List<String> arguments) {
 
   save(
     'assets/branding/cikscoffee-app-icon.png',
-    canvas(1024, 760, opaque: true),
+    canvas(1024, 608, opaque: true),
   );
   // The full silhouette stays within the safe center of adaptive launcher masks.
-  save('assets/branding/cikscoffee-adaptive-foreground.png', canvas(1024, 620));
+  save('assets/branding/cikscoffee-adaptive-foreground.png', canvas(1024, 496));
 
   const densities = {
     'mdpi': 1.0,
@@ -116,12 +116,22 @@ void main(List<String> arguments) {
     final folder = 'android/app/src/main/res/drawable-${entry.key}';
     save(
       '$folder/brand_splash.png',
-      canvas((160 * entry.value).round(), (128 * entry.value).round()),
+      fitArtwork(
+        wordmark,
+        (160 * entry.value).round(),
+        (160 * entry.value).round(),
+        (8 * entry.value).round(),
+      ),
     );
     // Android 12: 288dp canvas, artwork within a 192dp diameter safe circle.
     save(
       '$folder/brand_splash_android12.png',
-      canvas((288 * entry.value).round(), (168 * entry.value).round()),
+      fitArtwork(
+        wordmark,
+        (288 * entry.value).round(),
+        (288 * entry.value).round(),
+        (60 * entry.value).round(),
+      ),
     );
     final notification = canvas(
       (24 * entry.value).round(),
@@ -135,7 +145,7 @@ void main(List<String> arguments) {
     save('$folder/ic_notification.png', notification);
     final monochrome = canvas(
       (108 * entry.value).round(),
-      (65 * entry.value).round(),
+      (52 * entry.value).round(),
     );
     for (final pixel in monochrome) {
       pixel.r = 255;
@@ -148,7 +158,7 @@ void main(List<String> arguments) {
     final suffix = scale == 1 ? '' : '@${scale}x';
     save(
       'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage$suffix.png',
-      canvas(160 * scale, 128 * scale),
+      fitArtwork(wordmark, 160 * scale, 160 * scale, 8 * scale),
     );
   }
   stdout.writeln('Brand exports ready. Run: dart run flutter_launcher_icons');
