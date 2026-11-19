@@ -100,10 +100,10 @@ void main(List<String> arguments) {
 
   save(
     'assets/branding/cikscoffee-app-icon.png',
-    canvas(1024, 608, opaque: true),
+    canvas(1024, 486, opaque: true),
   );
   // The full silhouette stays within the safe center of adaptive launcher masks.
-  save('assets/branding/cikscoffee-adaptive-foreground.png', canvas(1024, 496));
+  save('assets/branding/cikscoffee-adaptive-foreground.png', canvas(1024, 398));
 
   const densities = {
     'mdpi': 1.0,
@@ -145,7 +145,7 @@ void main(List<String> arguments) {
     save('$folder/ic_notification.png', notification);
     final monochrome = canvas(
       (108 * entry.value).round(),
-      (52 * entry.value).round(),
+      (42 * entry.value).round(),
     );
     for (final pixel in monochrome) {
       pixel.r = 255;

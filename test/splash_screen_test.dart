@@ -18,7 +18,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       expect(find.byType(BrandMark), findsNothing);
       expect(find.byType(BrandWordmark), findsOneWidget);
-      expect(find.text('Ciks Coffee'), findsOneWidget);
+      expect(find.text('Ciks Coffee'), findsNothing);
       expect(find.text('Rasa yang akrab.\nJeda yang berarti.'), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'Viewport $size');
       await tester.pumpWidget(const SizedBox());
@@ -40,7 +40,8 @@ void main() {
       ),
     );
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Ciks Coffee'), findsOneWidget);
+    expect(find.text('Ciks Coffee'), findsNothing);
+    expect(find.byType(BrandWordmark), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
