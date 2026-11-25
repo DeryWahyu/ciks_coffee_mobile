@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cart_item_model.dart';
+import '../models/checkout_session_model.dart';
 import '../models/product_model.dart';
 import '../providers/cart_provider.dart';
 import '../providers/language_provider.dart';
@@ -22,22 +25,98 @@ class CartScreen extends StatefulWidget {
   State<CartScreen> createState() => _CartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _CartScreenState extends State<CartScreen> with WidgetsBindingObserver {
   late final ApiService _apiService = widget.apiService ?? ApiService();
   bool _isCheckingOut = false;
   bool _paymentSheetOpen = false;
-  bool _hasPendingCheckout = false;
+  bool _closingPaymentSheet = false;
+  Map<String, dynamic>? _pendingCheckout;
+  Timer? _paymentDeadline;
+  VoidCallback? _closePaymentSheet;
+  int _pendingRevision = 0;
+  bool get _hasPendingCheckout => _pendingCheckout != null;
+  bool get _needsPaymentReview =>
+      _pendingCheckout != null &&
+      CheckoutSession(_pendingCheckout!).needsReview;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _restorePending();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _paymentDeadline?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final pending = _pendingCheckout;
+    if (pending != null && CheckoutSession(pending).endedAt(DateTime.now())) {
+      unawaited(_expirePending(pending));
+    }
+    if (!_paymentSheetOpen && !_isCheckingOut) unawaited(_restorePending());
+  }
+
+  void _setPending(Map<String, dynamic>? pending) {
+    _pendingRevision++;
+    _paymentDeadline?.cancel();
+    setState(() => _pendingCheckout = pending);
+    if (pending == null) return;
+    final session = CheckoutSession(pending);
+    if (session.expiresAt == null || session.needsReview) return;
+    final account = ApiService.sessionVersion;
+    _paymentDeadline = Timer(session.expiresAt!.difference(DateTime.now()), () {
+      if (!mounted) return;
+      if (account != ApiService.sessionVersion) {
+        _setPending(null);
+        return;
+      }
+      unawaited(_expirePending(pending));
+    });
+  }
+
+  Future<void> _expirePending(Map<String, dynamic> pending) async {
+    if (!mounted ||
+        _isCheckingOut ||
+        !identical(_pendingCheckout, pending) ||
+        CheckoutSession(pending).needsReview) {
+      return;
+    }
+    _setPending(null);
+    _closePaymentSheet?.call();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sesi pembayaran telah berakhir. Jika sudah membayar, tunjukkan bukti kepada kasir.',
+        ),
+      ),
+    );
+    try {
+      await _apiService.clearPendingCheckout(
+        checkoutId: pending['checkout_id'],
+        requestKey: pending['request_key'],
+      );
+    } catch (_) {
+      // Expired metadata will also be checked when storage is read again.
+    }
+  }
+
   Future<void> _restorePending() async {
+    final request = ++_pendingRevision;
     try {
       final pending = await _apiService.pendingCheckout();
-      if (mounted) setState(() => _hasPendingCheckout = pending != null);
+      if (mounted &&
+          request == _pendingRevision &&
+          !_paymentSheetOpen &&
+          !_isCheckingOut) {
+        _setPending(pending);
+      }
     } catch (_) {
       /* The checkout button retries when the connection is available. */
     }
@@ -51,6 +130,7 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _checkout() async {
     if (_isCheckingOut || _paymentSheetOpen) return;
+    _pendingRevision++;
     final cart = context.read<CartProvider>();
     final lang = context.read<LanguageProvider>();
     _paymentSheetOpen = true;
@@ -59,6 +139,8 @@ class _CartScreenState extends State<CartScreen> {
       await cart.ready;
       final pending = await _apiService.pendingCheckout();
       if (!mounted) return;
+      if (generation != cart.sessionGeneration) return;
+      _setPending(pending);
       if (cart.isEmpty && pending == null) return;
       if (pending == null) {
         final catalogue = await _apiService.getProducts();
@@ -108,7 +190,9 @@ class _CartScreenState extends State<CartScreen> {
         cartId: cart.basketId,
       );
       if (!mounted) return;
+      if (generation != cart.sessionGeneration) return;
       if (prepared['success'] != true) {
+        if (prepared['expired'] == true) _setPending(null);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -136,34 +220,77 @@ class _CartScreenState extends State<CartScreen> {
         if (persisted) {
           await _apiService.clearPendingCheckout(checkoutId: quote['id']);
         }
-        if (mounted) setState(() => _hasPendingCheckout = !persisted);
+        if (mounted) {
+          _setPending(
+            persisted
+                ? null
+                : CheckoutSession.fromQuote(
+                    quote,
+                    localCartId: quote['local_cart_id'],
+                    submissionPending: true,
+                  ).data,
+          );
+        }
         if (mounted) await _showSuccessDialog({'order': quote['order']}, lang);
         return;
       }
       final paymentTotal = _formatPrice(
         double.parse(quote['total'].toString()),
       );
-      setState(() => _hasPendingCheckout = true);
+      final active = CheckoutSession.fromQuote(
+        quote,
+        localCartId: quote['local_cart_id'],
+        submissionPending: pending?['submission_pending'] == true,
+      ).data;
+      if (CheckoutSession(active).endedAt(DateTime.now())) {
+        _setPending(active);
+        await _expirePending(active);
+        return;
+      }
+      _setPending(active);
       final proof = await showCoffeeSheet<String>(
         context: context,
-        builder: (_) => QrisPaymentSheet(
-          total: paymentTotal,
-          language: lang,
-          apiService: _apiService,
-          expiresAt: DateTime.parse(quote['expires_at']),
-          items: paymentItems,
-          allowPayment: quote['can_pay'] == true,
-          onCancel: () async {
-            final cancelled = await _apiService.cancelCheckout(quote['id']);
-            if (cancelled['success'] == true && mounted) {
-              setState(() => _hasPendingCheckout = false);
-            }
-            return cancelled;
-          },
-        ),
+        builder: (sheetContext) {
+          _closePaymentSheet = () {
+            if (_closingPaymentSheet || !sheetContext.mounted) return;
+            final route = ModalRoute.of(sheetContext);
+            if (route == null || !route.isActive) return;
+            _closingPaymentSheet = true;
+            final navigator = Navigator.of(sheetContext);
+            navigator.popUntil((entry) => entry == route);
+            navigator.pop();
+          };
+          return QrisPaymentSheet(
+            total: paymentTotal,
+            language: lang,
+            apiService: _apiService,
+            expiresAt: DateTime.parse(quote['expires_at']),
+            items: paymentItems,
+            allowPayment:
+                quote['can_pay'] == true &&
+                !CheckoutSession(active).needsReview,
+            onExpired:
+                quote['can_pay'] == true && !CheckoutSession(active).needsReview
+                ? () {
+                    unawaited(_expirePending(active));
+                  }
+                : null,
+            onCancel: () async {
+              final cancelled = await _apiService.cancelCheckout(quote['id']);
+              if (cancelled['success'] == true &&
+                  mounted &&
+                  _pendingCheckout?['checkout_id'] == quote['id']) {
+                _setPending(null);
+              }
+              return cancelled;
+            },
+          );
+        },
       );
       if (!mounted || proof == null || proof.isEmpty) return;
+      if (generation != cart.sessionGeneration) return;
       setState(() => _isCheckingOut = true);
+      _setPending({...active, 'submission_pending': true});
       final result = await _apiService.checkout(
         paymentMethod: 'qris',
         items: paymentItems,
@@ -183,7 +310,7 @@ class _CartScreenState extends State<CartScreen> {
         if (persisted) {
           await _apiService.clearPendingCheckout(checkoutId: quote['id']);
         }
-        if (mounted) setState(() => _hasPendingCheckout = !persisted);
+        if (mounted && persisted) _setPending(null);
       }
       if (!mounted) return;
       if (result['success'] == true) {
@@ -221,6 +348,8 @@ class _CartScreenState extends State<CartScreen> {
       }
     } finally {
       _paymentSheetOpen = false;
+      _closingPaymentSheet = false;
+      _closePaymentSheet = null;
       if (mounted) setState(() => _isCheckingOut = false);
     }
   }
@@ -316,13 +445,17 @@ class _CartScreenState extends State<CartScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Ada sesi pembayaran yang belum selesai.',
+                    Text(
+                      _needsPaymentReview
+                          ? 'Periksa hasil pengiriman pembayaran sebelumnya.'
+                          : 'Ada sesi pembayaran yang masih aktif.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     CoffeeButton(
-                      label: 'Lanjutkan pembayaran',
+                      label: _needsPaymentReview
+                          ? 'Periksa pembayaran'
+                          : 'Lanjutkan pembayaran',
                       onPressed: _checkout,
                       loading: _isCheckingOut,
                     ),
@@ -348,10 +481,25 @@ class _CartScreenState extends State<CartScreen> {
                       _cartItem(cart.itemsList[index], cart, lang),
                 );
                 final panel = CartCheckoutPanel(
-                  total: _formatPrice(cart.totalPrice),
-                  itemCount: cart.totalItemCount,
+                  total: _formatPrice(
+                    _hasPendingCheckout
+                        ? double.tryParse(
+                                '${_pendingCheckout!['expected_total']}',
+                              ) ??
+                              cart.totalPrice
+                        : cart.totalPrice,
+                  ),
+                  itemCount: _pendingCheckout?['items'] is List
+                      ? (_pendingCheckout!['items'] as List).fold<int>(
+                          0,
+                          (sum, item) =>
+                              sum + (int.tryParse('${item['quantity']}') ?? 0),
+                        )
+                      : cart.totalItemCount,
                   language: lang,
                   busy: _isCheckingOut,
+                  resumePayment: _hasPendingCheckout,
+                  reviewPayment: _needsPaymentReview,
                   onCheckout: _checkout,
                 );
                 if (scrollTogether) {

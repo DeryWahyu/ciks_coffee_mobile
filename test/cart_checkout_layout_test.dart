@@ -52,7 +52,7 @@ void main() {
       );
       await tester.drag(find.byType(CartScreen), const Offset(0, -2000));
       await tester.pumpAndSettle();
-      expect(find.text('Lanjutkan Pembayaran'), findsOneWidget);
+      expect(find.text('Bayar sekarang'), findsOneWidget);
       expect(
         tester
             .getBottomLeft(find.byKey(const ValueKey('cart-checkout-action')))

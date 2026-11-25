@@ -17,6 +17,7 @@ class QrisPaymentSheet extends StatefulWidget {
     required this.apiService,
     this.expiresAt,
     this.onCancel,
+    this.onExpired,
     this.items = const [],
     this.allowPayment = true,
   });
@@ -26,6 +27,7 @@ class QrisPaymentSheet extends StatefulWidget {
   final ApiService apiService;
   final DateTime? expiresAt;
   final Future<Map<String, dynamic>> Function()? onCancel;
+  final VoidCallback? onExpired;
   final List<Map<String, dynamic>> items;
   final bool allowPayment;
 
@@ -40,7 +42,9 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
   String? _error;
   Timer? _expiryTimer;
   bool _cancelling = false;
+  bool _deadlineReached = false;
   bool get _expired =>
+      _deadlineReached ||
       !widget.allowPayment ||
       (widget.expiresAt != null && !widget.expiresAt!.isAfter(DateTime.now()));
 
@@ -49,7 +53,9 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
     super.initState();
     if (widget.expiresAt != null) {
       _expiryTimer = Timer(widget.expiresAt!.difference(DateTime.now()), () {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        setState(() => _deadlineReached = true);
+        widget.onExpired?.call();
       });
     }
   }
@@ -203,7 +209,9 @@ class _QrisPaymentSheetState extends State<QrisPaymentSheet> {
             ),
           if (widget.expiresAt != null) ...[
             Text(
-              _expired
+              !widget.allowPayment
+                  ? 'Jangan lakukan pembayaran baru. Unggah bukti pembayaran sebelumnya untuk pemeriksaan kasir.'
+                  : _expired
                   ? 'Waktu pembayaran berakhir. Jangan lakukan pembayaran baru. Jika sudah membayar, unggah bukti untuk pemeriksaan kasir.'
                   : 'Harga dikunci dan stok direservasi sampai ${widget.expiresAt!.toLocal().hour.toString().padLeft(2, '0')}:${widget.expiresAt!.toLocal().minute.toString().padLeft(2, '0')}.',
               style: const TextStyle(

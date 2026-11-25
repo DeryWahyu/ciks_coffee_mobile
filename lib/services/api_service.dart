@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/table_layout_model.dart';
 import '../models/user_model.dart';
+import '../models/checkout_session_model.dart';
 import 'user_message.dart';
 
 enum SessionStatus { valid, unauthenticated, unavailable }
@@ -529,25 +530,50 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>?> pendingCheckout() async {
-    final prefs = await SharedPreferences.getInstance(),
-        saved = (await SharedPreferences.getInstance()).getString(
-          'pending_checkout',
+    final version = sessionVersion;
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('pending_checkout');
+    if (version != sessionVersion) return null;
+    if (saved != null) {
+      final pending = _decode(saved);
+      if (CheckoutSession(pending).endedAt(DateTime.now())) {
+        await clearPendingCheckout(
+          checkoutId: pending['checkout_id'],
+          requestKey: pending['request_key'],
         );
-    if (saved != null) return _decode(saved);
+        return null;
+      }
+      // Older installations did not save the deadline. Re-read the original
+      // reservation with its original key instead of creating another one.
+      if (pending['checkout_id'] != null &&
+          CheckoutSession(pending).expiresAt == null &&
+          !CheckoutSession(pending).needsReview) {
+        final result = await prepareCheckout(
+          items: (pending['items'] as List)
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList(),
+          expectedTotal: double.parse('${pending['expected_total']}'),
+          pending: pending,
+        );
+        if (version != sessionVersion || result['expired'] == true) return null;
+        if (result['success'] == true) {
+          return _decode(prefs.getString('pending_checkout') ?? '{}');
+        }
+      }
+      return version == sessionVersion ? pending : null;
+    }
     final current = await _get('/checkouts/current');
     if (current['success'] != true) {
       throw StateError(
         current['message'] ?? 'Pembayaran belum dapat diperiksa.',
       );
     }
-    if (current['data'] == null) return null;
+    if (current['data'] == null || version != sessionVersion) return null;
+    // A reservation may have been created while this restore request waited.
+    if (prefs.getString('pending_checkout') != null) return pendingCheckout();
     final quote = Map<String, dynamic>.from(current['data']);
-    final pending = {
-      'request_key': quote['request_key'],
-      'items': quote['items'],
-      'expected_total': quote['total'],
-      'checkout_id': quote['id'],
-    };
+    final pending = CheckoutSession.fromQuote(quote).data;
+    if (CheckoutSession(pending).endedAt(DateTime.now())) return null;
     await prefs.setString('pending_checkout', jsonEncode(pending));
     return pending;
   }
@@ -559,7 +585,9 @@ class ApiService {
     String? cartId,
   }) async {
     try {
+      final version = sessionVersion;
       final prefs = await SharedPreferences.getInstance();
+      if (version != sessionVersion) throw StateError('Session changed');
       final payload =
           pending ??
           {
@@ -571,25 +599,46 @@ class ApiService {
       if (!await prefs.setString('pending_checkout', jsonEncode(payload))) {
         throw StateError('Sesi pembayaran belum dapat disimpan.');
       }
+      if (version != sessionVersion) throw StateError('Session changed');
       final r = await _request('POST', '/checkouts', body: payload);
       if (r.statusCode != 201) {
         if (r.statusCode == 422 && payload['checkout_id'] == null) {
-          await prefs.remove('pending_checkout');
+          await clearPendingCheckout(requestKey: payload['request_key']);
         }
         return _failure(r);
       }
       final quote = Map<String, dynamic>.from(_decode(r.body)['data']);
+      if (version != sessionVersion) throw StateError('Session changed');
+      final latest = _decode(prefs.getString('pending_checkout') ?? '{}');
+      if (latest['request_key'] != payload['request_key']) {
+        throw StateError('Payment reservation changed');
+      }
+      if (quote['id'] is! String ||
+          quote['items'] is! List ||
+          DateTime.tryParse('${quote['expires_at']}') == null) {
+        throw const FormatException('Invalid payment reservation');
+      }
       quote['local_cart_id'] = payload['local_cart_id'];
-      await prefs.setString(
-        'pending_checkout',
-        jsonEncode({
-          'request_key': quote['request_key'],
-          'items': quote['items'],
-          'expected_total': quote['total'],
-          'checkout_id': quote['id'],
-          'local_cart_id': payload['local_cart_id'],
-        }),
+      final reservation = CheckoutSession.fromQuote(
+        quote,
+        localCartId: payload['local_cart_id'],
+        submissionPending: payload['submission_pending'] == true,
       );
+      if (reservation.endedAt(DateTime.now())) {
+        await clearPendingCheckout(requestKey: payload['request_key']);
+        return {
+          'success': false,
+          'expired': true,
+          'message':
+              'Sesi pembayaran telah berakhir. Silakan mulai pembayaran baru.',
+        };
+      }
+      if (!await prefs.setString(
+        'pending_checkout',
+        jsonEncode(reservation.data),
+      )) {
+        throw StateError('Could not persist payment deadline');
+      }
       return {'success': true, 'data': quote};
     } catch (_) {
       return {
@@ -600,12 +649,20 @@ class ApiService {
     }
   }
 
-  Future<void> clearPendingCheckout({String? checkoutId}) async {
+  Future<void> clearPendingCheckout({
+    String? checkoutId,
+    String? requestKey,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final pending = prefs.getString('pending_checkout');
     if (checkoutId != null &&
         pending != null &&
         _decode(pending)['checkout_id'] != checkoutId) {
+      return;
+    }
+    if (requestKey != null &&
+        pending != null &&
+        _decode(pending)['request_key'] != requestKey) {
       return;
     }
     await prefs.remove('pending_checkout');
@@ -655,6 +712,17 @@ class ApiService {
         request.files.add(
           await http.MultipartFile.fromPath('payment_proof', paymentProofPath),
         );
+      }
+      if (checkoutId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final pending = _decode(prefs.getString('pending_checkout') ?? '{}');
+        if (pending['checkout_id'] == checkoutId &&
+            !await prefs.setString(
+              'pending_checkout',
+              jsonEncode({...pending, 'submission_pending': true}),
+            )) {
+          throw StateError('Could not persist payment submission');
+        }
       }
       final r = await _send(
         request,

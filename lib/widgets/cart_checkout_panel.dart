@@ -11,6 +11,8 @@ class CartCheckoutPanel extends StatelessWidget {
     required this.language,
     required this.onCheckout,
     this.busy = false,
+    this.resumePayment = false,
+    this.reviewPayment = false,
   });
 
   final String total;
@@ -18,6 +20,8 @@ class CartCheckoutPanel extends StatelessWidget {
   final LanguageProvider language;
   final VoidCallback onCheckout;
   final bool busy;
+  final bool resumePayment;
+  final bool reviewPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +93,11 @@ class CartCheckoutPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    english ? 'Total payment' : 'Total pembayaran',
+                    resumePayment
+                        ? (english
+                              ? 'Saved payment total'
+                              : 'Total sesi pembayaran')
+                        : (english ? 'Total payment' : 'Total pembayaran'),
                     style: const TextStyle(
                       fontFamily: 'CiksSans',
                       fontSize: 12,
@@ -138,7 +146,11 @@ class CartCheckoutPanel extends StatelessWidget {
           const SizedBox(height: 18),
           CoffeeButton(
             key: const ValueKey('cart-checkout-action'),
-            label: english ? 'Continue to payment' : 'Lanjutkan Pembayaran',
+            label: reviewPayment
+                ? (english ? 'Check payment' : 'Periksa pembayaran')
+                : resumePayment
+                ? (english ? 'Resume payment' : 'Lanjutkan pembayaran')
+                : (english ? 'Pay now' : 'Bayar sekarang'),
             icon: Icons.arrow_forward_rounded,
             loading: busy,
             onPressed: onCheckout,
